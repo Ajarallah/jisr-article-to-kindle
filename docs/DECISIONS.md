@@ -52,6 +52,19 @@ Each entry: **what** was decided, **why**, and the **precedent** it was based on
 - **Why:** Zero-cost, zero-hosting for a single user, with a clear upgrade path to always-on delivery without a laptop running.
 - **Precedent:** The owner's noted Hostinger VPS as available backend infrastructure; "minimum viable, no premature infrastructure" discipline.
 
+## D9 — Delivery pivot: email/SMTP → Amazon Send-to-Kindle OAuth (private API)
+
+- **What:** The primary delivery path is no longer email-to-Kindle via SMTP. It is Amazon's own "Send to Kindle" upload flow, authenticated with the user's Amazon account over OAuth2 — the same mechanism Amazon's official Send-to-Kindle extension and web uploader use. The EPUB uploads straight from the browser to Amazon and lands in the Kindle library. Email delivery is kept only as a documented fallback.
+- **Why:** Live user testing exposed that the email path forces the user through Amazon's "Approved Personal Document E-mail List" step (an anti-spam gate Amazon imposes on ALL email senders — Push to Kindle, KTool, Readwise, Instapaper all inherit it), plus SMTP/App-Password setup. It felt risky and multi-step to a real (non-developer) user, and routed the content through a third-party server. The OAuth path removes ALL of that: no email, no approved-sender step, no SMTP, and no server touching the content — the file goes browser → Amazon directly. Fewest steps + maximum privacy.
+- **Precedent:** (a) The owner's explicit standing authorization to use unofficial/undocumented APIs when they are the right technical choice (recorded in the original build brief). (b) Verified against working open-source reference clients — `stkclient` (Python, OAuth2) and `Xetera/kindle-api` (JS) — so this is a trodden path, not a guess. (c) The "build the real user experience, not a developer workaround" instruction from the owner during testing.
+- **Known risk (documented, accepted):** Amazon's STK API is private and undocumented; Amazon can change it. The email path remains as fallback to de-risk this.
+
+## D10 — Fully serverless: BYO-key translation, no backend in the default path
+
+- **What:** With delivery on OAuth (no server) the remaining server role was translation. Default path moves translation client-side: the extension calls OpenRouter directly using the user's OWN key, stored locally in the browser. The `server/` stays in the repo as an OPTIONAL self-host translation proxy (for users who prefer not to place a key in the browser, or want to run it on their VPS).
+- **Why:** Eliminates our infrastructure entirely for the core product, zero hosting cost, and keeps the privacy story clean — nothing we operate sits between the user and Amazon/OpenRouter. Translation is an opt-in advanced feature, so a BYO-key requirement is acceptable friction confined to that feature; the core send-to-Kindle stays a single click.
+- **Precedent:** The owner's "OpenRouter-first, never the env Gemini key" rule ([[feedback_external_llm_openrouter]]) and the "minimum viable, no premature infrastructure" discipline. BYO-key mirrors how many indie reader tools ship optional AI features.
+
 ---
 
 ### Money / external-commitment ledger (for the final review)
