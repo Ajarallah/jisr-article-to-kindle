@@ -1,69 +1,84 @@
 <!DOCTYPE html>
-<html>
+<html lang="ar" dir="rtl">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Article to Kindle — Settings</title>
+  <title>المقال إلى كندل — الإعدادات</title>
   <link rel="stylesheet" href="options.css" />
 </head>
 <body>
   <div class="wrap">
     <header>
-      <span class="mark">A2K</span>
-      <h1>Article to Kindle — Settings</h1>
+      <span class="brand-badge" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 5.5A2 2 0 0 1 5 3.5h5v16.5H5a2 2 0 0 0-2 2V5.5z" />
+          <path d="M21 5.5a2 2 0 0 0-2-2h-5v16.5h5a2 2 0 0 1 2 2V5.5z" />
+        </svg>
+      </span>
+      <h1>المقال إلى كندل — الإعدادات</h1>
     </header>
 
     <section class="panel">
-      <h2>1. Your Kindle email</h2>
+      <h2>١. بريد كندل الخاص بك</h2>
       <p class="hint">
-        The address that ends in <code>@kindle.com</code>. Find it in Amazon →
-        <em>Manage Your Content and Devices</em> → <em>Preferences</em> →
-        <em>Personal Document Settings</em>.
+        العنوان المنتهي بـ <code>@kindle.com</code>. تجده في أمازون ضمن
+        <em>إدارة المحتوى والأجهزة</em> ← <em>التفضيلات</em> ←
+        <em>إعدادات المستندات الشخصية</em>.
       </p>
-      <input id="kindleEmail" type="email" placeholder="yourname_1a2b3c@kindle.com" />
+      <input id="kindleEmail" type="email" dir="ltr" placeholder="yourname_1a2b3c@kindle.com" />
     </section>
 
     <section class="panel">
-      <h2>2. Delivery service</h2>
+      <h2>٢. خدمة الإرسال</h2>
       <p class="hint">
-        The address of your sending service (the small backend that emails the
-        EPUB to your Kindle). Default is a local server on your machine.
+        عنوان برنامج الإرسال الصغير الذي يبعث ملف EPUB إلى كندل. الافتراضي خادم
+        محلي على جهازك؛ يمكن تغييره لاحقًا إلى خادمك الدائم (VPS).
       </p>
-      <input id="backendUrl" type="url" placeholder="http://localhost:8787" />
+      <input id="backendUrl" type="url" dir="ltr" placeholder="http://localhost:8787" />
     </section>
 
     <section class="panel important">
-      <h2>3. Approve the sender (required once)</h2>
+      <div class="panel-head">
+        <span class="warn-dot" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 9v4" /><path d="M12 17h.01" />
+            <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
+          </svg>
+        </span>
+        <h2>٣. اعتماد المُرسِل (مرة واحدة، لازمة)</h2>
+      </div>
       <p class="hint">
-        Amazon silently drops any document from an address you have not
-        approved. In the same <em>Personal Document Settings</em> page, under
-        <strong>Approved Personal Document E-mail List</strong>, add the address
-        your delivery service sends from. If you do not do this, sends will look
-        successful but nothing arrives.
+        أمازون تتجاهل بصمت أي مستند من عنوان لم تعتمده مسبقًا. في صفحة
+        <em>إعدادات المستندات الشخصية</em> نفسها، تحت
+        <strong>قائمة البريد المعتمد للمستندات الشخصية</strong>، أضِف العنوان الذي
+        ترسل منه خدمتك. إن لم تفعل، سيبدو الإرسال ناجحًا لكن لا شيء يصل.
       </p>
     </section>
 
     <section class="panel">
-      <h2>4. Translation defaults</h2>
-      <label class="row">
-        <input type="checkbox" id="translateByDefault" />
-        <span>Turn on “translate before sending” by default</span>
+      <h2>٤. تفضيلات الترجمة</h2>
+      <label class="switch-row">
+        <span class="switch-label">تفعيل «الترجمة قبل الإرسال» افتراضيًا</span>
+        <span class="switch">
+          <input type="checkbox" id="translateByDefault" />
+          <span class="track"><span class="thumb"></span></span>
+        </span>
       </label>
       <label class="field">
-        <span>Default target language</span>
+        <span>لغة الوجهة الافتراضية</span>
         <select id="defaultTargetLang">
-          <option value="Arabic">Arabic — العربية</option>
-          <option value="English">English</option>
-          <option value="French">French</option>
-          <option value="Spanish">Spanish</option>
-          <option value="German">German</option>
+          <option value="Arabic">العربية</option>
+          <option value="English">الإنجليزية</option>
+          <option value="French">الفرنسية</option>
+          <option value="Spanish">الإسبانية</option>
+          <option value="German">الألمانية</option>
         </select>
       </label>
     </section>
 
     <div class="actions">
-      <button id="saveBtn" class="btn primary">Save</button>
-      <button id="testBtn" class="btn ghost">Send a test document</button>
+      <button id="saveBtn" class="btn primary">حفظ</button>
+      <button id="testBtn" class="btn ghost">إرسال مستند تجريبي</button>
     </div>
     <div id="status" class="status hidden"></div>
   </div>

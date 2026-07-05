@@ -37,11 +37,11 @@ async function save() {
     defaultTargetLang: els.defaultTargetLang.value,
   };
   if (values.kindleEmail && !/@kindle\.com$/i.test(values.kindleEmail)) {
-    setStatus("err", "That does not look like a @kindle.com address.");
+    setStatus("err", "هذا لا يبدو عنوان @kindle.com صحيحًا.");
     return false;
   }
   await chrome.storage.sync.set(values);
-  setStatus("ok", "Settings saved.");
+  setStatus("ok", "تم حفظ الإعدادات.");
   return true;
 }
 
@@ -49,10 +49,10 @@ async function sendTest() {
   if (!(await save())) return;
   const s = await chrome.storage.sync.get(DEFAULTS);
   if (!s.kindleEmail) {
-    setStatus("err", "Enter your Kindle email first.");
+    setStatus("err", "أدخل بريد كندل أولًا.");
     return;
   }
-  setStatus("info", "Sending a test document…");
+  setStatus("info", "جارٍ إرسال مستند تجريبي…");
   try {
     const resp = await fetch(s.backendUrl + "/test", {
       method: "POST",
@@ -63,10 +63,10 @@ async function sendTest() {
     if (!resp.ok || !data.ok) throw new Error(data.error || `HTTP ${resp.status}`);
     setStatus(
       "ok",
-      "Test document sent. Check your Kindle in a few minutes. If nothing arrives, the sender is not on your Amazon approved list yet (step 3)."
+      "تم إرسال المستند التجريبي. تحقق من كندل خلال دقائق. إن لم يصل شيء، فالمُرسِل ليس بعدُ ضمن قائمة أمازون المعتمدة (الخطوة ٣)."
     );
   } catch (e) {
-    setStatus("err", "Test failed: " + e.message + " — is the delivery service running?");
+    setStatus("err", "فشل الاختبار: " + e.message + " — هل خدمة الإرسال تعمل؟");
   }
 }
 

@@ -50,7 +50,7 @@ async function loadSettings() {
     els.kindleEmail.textContent = settings.kindleEmail;
   } else {
     els.kindleEmail.innerHTML =
-      '<a href="#" id="openSettingsLink">Set your Kindle email →</a>';
+      '<a href="#" id="openSettingsLink">تحديد بريد كندل ←</a>';
     document
       .getElementById("openSettingsLink")
       .addEventListener("click", (e) => {
@@ -63,7 +63,7 @@ async function loadSettings() {
 async function extractCurrentArticle() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab || !tab.id || /^(chrome|edge|about|chrome-extension):/.test(tab.url || "")) {
-    els.title.textContent = "Open an article page, then click the extension.";
+    els.title.textContent = "افتح صفحة مقال ثم اضغط على الإضافة.";
     els.title.classList.remove("skeleton");
     return;
   }
@@ -81,7 +81,7 @@ async function extractCurrentArticle() {
     const result = results && results[0] && results[0].result;
     if (!result || !result.ok) {
       els.title.textContent =
-        "Could not find a readable article on this page.";
+        "تعذر العثور على مقال قابل للقراءة في هذه الصفحة.";
       els.title.classList.remove("skeleton");
       return;
     }
@@ -92,13 +92,12 @@ async function extractCurrentArticle() {
     const words = Math.max(1, Math.round(article.textLength / 6));
     const bits = [];
     if (article.siteName) bits.push(article.siteName);
-    bits.push(`~${words.toLocaleString()} words`);
-    if (article.dir === "rtl") bits.push("RTL");
+    bits.push(`${words.toLocaleString("ar")} كلمة`);
     els.meta.textContent = bits.join(" · ");
     els.sendBtn.disabled = false;
     els.downloadBtn.disabled = false;
   } catch (e) {
-    els.title.textContent = "Extraction failed: " + e.message;
+    els.title.textContent = "فشل الاستخلاص: " + e.message;
     els.title.classList.remove("skeleton");
   }
 }
@@ -133,10 +132,10 @@ async function translateArticle(art, targetLang) {
 async function prepareArticle() {
   let art = article;
   if (els.translateToggle.checked) {
-    setStatus("working", '<span class="spinner"></span>Translating with AI…');
+    setStatus("working", '<span class="spinner"></span>جارٍ الترجمة بالذكاء الاصطناعي…');
     art = await translateArticle(article, els.targetLang.value);
   }
-  setStatus("working", '<span class="spinner"></span>Building EPUB…');
+  setStatus("working", '<span class="spinner"></span>جارٍ بناء ملف EPUB…');
   const blob = await buildEpub(art);
   return { art, blob };
 }
@@ -144,14 +143,14 @@ async function prepareArticle() {
 async function onSend() {
   if (!article) return;
   if (!settings.kindleEmail) {
-    setStatus("err", "Set your Kindle email in settings first.");
+    setStatus("err", "حدِّد بريد كندل في الإعدادات أولًا.");
     return;
   }
   els.sendBtn.disabled = true;
   els.downloadBtn.disabled = true;
   try {
     const { art, blob } = await prepareArticle();
-    setStatus("working", '<span class="spinner"></span>Sending to your Kindle…');
+    setStatus("working", '<span class="spinner"></span>جارٍ الإرسال إلى كندل…');
     const epubBase64 = await blobToBase64(blob);
     const filename = sanitizeFilename(art.title) + ".epub";
     const resp = await fetch(settings.backendUrl.replace(/\/$/, "") + "/send", {
@@ -170,7 +169,7 @@ async function onSend() {
     }
     setStatus(
       "ok",
-      `Sent to <b>${settings.kindleEmail}</b>. It appears on your Kindle within a few minutes — make sure the sender address is on your Amazon approved list (see settings).`
+      `تم الإرسال إلى <b>${settings.kindleEmail}</b>. سيظهر على كندل خلال دقائق — تأكد من أن عنوان المُرسِل ضمن قائمة أمازون المعتمدة (انظر الإعدادات).`
     );
   } catch (e) {
     setStatus("err", e.message);
@@ -192,7 +191,7 @@ async function onDownload() {
     a.download = sanitizeFilename(art.title) + ".epub";
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
-    setStatus("ok", "EPUB downloaded.");
+    setStatus("ok", "تم تنزيل ملف EPUB.");
   } catch (e) {
     setStatus("err", e.message);
   } finally {

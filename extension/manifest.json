@@ -1,12 +1,12 @@
 {
   "manifest_version": 3,
-  "name": "Article to Kindle",
+  "name": "المقال إلى كندل",
   "version": "0.1.0",
-  "description": "Turn the article you are reading into a clean EPUB and send it to your Kindle — with optional AI translation.",
+  "description": "حوِّل المقال الذي تقرأه إلى ملف EPUB نظيف وأرسله إلى كندل، مع ترجمة اختيارية بالذكاء الاصطناعي.",
   "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": ["<all_urls>"],
   "action": {
-    "default_title": "Article to Kindle",
+    "default_title": "المقال إلى كندل",
     "default_popup": "src/popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
