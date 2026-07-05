@@ -1,0 +1,20 @@
+{
+  "name": "article-to-kindle-server",
+  "version": "0.1.0",
+  "description": "Delivery + translation backend for the Article to Kindle extension.",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "jszip": "^3.10.1",
+    "nodemailer": "^6.9.16"
+  }
+}
