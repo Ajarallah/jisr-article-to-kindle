@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Article to Kindle — Settings</title>
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <span class="mark">A2K</span>
+      <h1>Article to Kindle — Settings</h1>
+    </header>
+
+    <section class="panel">
+      <h2>1. Your Kindle email</h2>
+      <p class="hint">
+        The address that ends in <code>@kindle.com</code>. Find it in Amazon →
+        <em>Manage Your Content and Devices</em> → <em>Preferences</em> →
+        <em>Personal Document Settings</em>.
+      </p>
+      <input id="kindleEmail" type="email" placeholder="yourname_1a2b3c@kindle.com" />
+    </section>
+
+    <section class="panel">
+      <h2>2. Delivery service</h2>
+      <p class="hint">
+        The address of your sending service (the small backend that emails the
+        EPUB to your Kindle). Default is a local server on your machine.
+      </p>
+      <input id="backendUrl" type="url" placeholder="http://localhost:8787" />
+    </section>
+
+    <section class="panel important">
+      <h2>3. Approve the sender (required once)</h2>
+      <p class="hint">
+        Amazon silently drops any document from an address you have not
+        approved. In the same <em>Personal Document Settings</em> page, under
+        <strong>Approved Personal Document E-mail List</strong>, add the address
+        your delivery service sends from. If you do not do this, sends will look
+        successful but nothing arrives.
+      </p>
+    </section>
+
+    <section class="panel">
+      <h2>4. Translation defaults</h2>
+      <label class="row">
+        <input type="checkbox" id="translateByDefault" />
+        <span>Turn on “translate before sending” by default</span>
+      </label>
+      <label class="field">
+        <span>Default target language</span>
+        <select id="defaultTargetLang">
+          <option value="Arabic">Arabic — العربية</option>
+          <option value="English">English</option>
+          <option value="French">French</option>
+          <option value="Spanish">Spanish</option>
+          <option value="German">German</option>
+        </select>
+      </label>
+    </section>
+
+    <div class="actions">
+      <button id="saveBtn" class="btn primary">Save</button>
+      <button id="testBtn" class="btn ghost">Send a test document</button>
+    </div>
+    <div id="status" class="status hidden"></div>
+  </div>
+  <script src="options.js"></script>
+</body>
+</html>
