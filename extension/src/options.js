@@ -2,13 +2,15 @@ const DEFAULTS = {
   amazonDomain: "https://www.amazon.com",
   translateByDefault: false,
   defaultTargetLang: "Arabic",
-  openrouterKey: "",
-  openrouterModel: "anthropic/claude-3.5-sonnet",
+  translationKey: "",
+  translationModel: "z-ai/glm-5.2",
+  translationFallbackModel: "deepseek-ai/deepseek-v4-pro",
+  translationEndpoint: "https://integrate.api.nvidia.com/v1/chat/completions",
 };
 
 const els = {
   amazonDomain: document.getElementById("amazonDomain"),
-  openrouterKey: document.getElementById("openrouterKey"),
+  translationKey: document.getElementById("translationKey"),
   translateByDefault: document.getElementById("translateByDefault"),
   defaultTargetLang: document.getElementById("defaultTargetLang"),
   saveBtn: document.getElementById("saveBtn"),
@@ -25,7 +27,7 @@ function setStatus(kind, text) {
 async function load() {
   const s = await chrome.storage.sync.get(DEFAULTS);
   els.amazonDomain.value = s.amazonDomain || DEFAULTS.amazonDomain;
-  els.openrouterKey.value = s.openrouterKey || "";
+  els.translationKey.value = s.translationKey || "";
   els.translateByDefault.checked = !!s.translateByDefault;
   els.defaultTargetLang.value = s.defaultTargetLang || "Arabic";
 }
@@ -38,8 +40,10 @@ async function save() {
   }
   await chrome.storage.sync.set({
     amazonDomain: domain,
-    openrouterKey: els.openrouterKey.value.trim(),
-    openrouterModel: DEFAULTS.openrouterModel,
+    translationKey: els.translationKey.value.trim(),
+    translationModel: DEFAULTS.translationModel,
+    translationFallbackModel: DEFAULTS.translationFallbackModel,
+    translationEndpoint: DEFAULTS.translationEndpoint,
     translateByDefault: els.translateByDefault.checked,
     defaultTargetLang: els.defaultTargetLang.value,
   });

@@ -22,8 +22,10 @@ const DEFAULT_SETTINGS = {
   amazonDomain: "https://www.amazon.com",
   translateByDefault: false,
   defaultTargetLang: "Arabic",
-  openrouterKey: "",
-  openrouterModel: "anthropic/claude-3.5-sonnet",
+  translationKey: "",
+  translationModel: "z-ai/glm-5.2",
+  translationFallbackModel: "deepseek-ai/deepseek-v4-pro",
+  translationEndpoint: "https://integrate.api.nvidia.com/v1/chat/completions",
 };
 
 function setStatus(kind, html) {
@@ -100,10 +102,15 @@ async function extractCurrentArticle() {
 }
 
 async function translateArticle(art, targetLang) {
-  if (!settings.openrouterKey) throw new Error("أضف مفتاح OpenRouter في الإعدادات لتفعيل الترجمة.");
+  if (!settings.translationKey) throw new Error("أضف مفتاح NVIDIA في الإعدادات لتفعيل الترجمة.");
   const out = await translateHtml(
     { title: art.title, html: art.content, targetLang },
-    { apiKey: settings.openrouterKey, model: settings.openrouterModel }
+    {
+      apiKey: settings.translationKey,
+      model: settings.translationModel,
+      fallbackModel: settings.translationFallbackModel,
+      endpoint: settings.translationEndpoint,
+    }
   );
   return { ...art, title: out.title || art.title, content: out.html || art.content, dir: out.dir || art.dir, lang: out.lang || art.lang };
 }

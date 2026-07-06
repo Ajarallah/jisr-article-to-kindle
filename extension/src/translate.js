@@ -1,20 +1,31 @@
 /*
- * Client-side, structure-preserving HTML translation (D10 — serverless).
+ * Client-side, structure-preserving translation.
  *
- * Ported from the server's translate.js. Instead of sending raw HTML to the
- * model (which mangles tags), we parse the HTML, collect the text nodes,
- * translate them in batches as a JSON array, and write the results back into
- * the same nodes. Tags, images, and links are never sent to the model.
+ * Instead of sending raw HTML to the model (which mangles tags), we parse the
+ * HTML, collect the text nodes, translate them in batches as a JSON array, and
+ * write the results back into the same nodes. Tags, images, and links are never
+ * sent to the model.
  *
- * Runs entirely in the browser and calls OpenRouter directly with the user's
- * own key. Requires host access to openrouter.ai (see manifest host_permissions).
+ * Default backend: NVIDIA NIM (OpenAI-compatible), model z-ai/glm-5.2 — chosen
+ * after benchmarking 5 models on Arabic translation (best quality + speed +
+ * instruction-compliance; see docs/05-translation-model-selection.md). Falls
+ * back to deepseek-ai/deepseek-v4-pro, and retries transient failures because
+ * the free tier occasionally rate-limits.
+ *
+ * BYO key, stored locally in the browser. Requires host access to the endpoint
+ * host (see manifest host_permissions).
  */
 
-const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const DEFAULT_ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions";
+const DEFAULT_MODEL = "z-ai/glm-5.2";
+const DEFAULT_FALLBACK = "deepseek-ai/deepseek-v4-pro";
 const MAX_CHARS_PER_BATCH = 4000;
+const MAX_ATTEMPTS_PER_MODEL = 3;
 
 const RTL_LANGS = ["arabic", "hebrew", "persian", "urdu"];
 const LANG_CODES = { arabic: "ar", english: "en", french: "fr", spanish: "es", german: "de" };
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function systemPrompt(targetLang) {
   const arabicRules = targetLang.toLowerCase().startsWith("arab")
@@ -22,15 +33,14 @@ function systemPrompt(targetLang) {
 - Use فصحى وسطى (Modern Standard Arabic, clear and readable — neither archaic nor colloquial).
 - Do NOT add tashkeel (diacritics). Leave letters unvowelled.
 - Do not use the word "بل".
-- Keep technical terms (API, MCP, SDK, cron, server, etc.) in Latin script.`
+- Keep technical terms and product names (API, SDK, LLM, GPT, transformer, token, etc.) in Latin script.`
     : "";
   return `You are a professional literary translator. Translate the given text segments into ${targetLang}.
 Rules:
 - Preserve meaning, tone, and register. Translate idiomatically, not word-for-word.
-- Return ONLY a JSON array of strings, exactly the same length and order as the input array.
+- Return ONLY a raw JSON array of strings, exactly the same length and order as the input array. No markdown fences, no commentary, no keys.
 - Each output string is the translation of the input string at the same index.
-- Never merge, split, drop, or reorder segments. If a segment is a number, symbol, or already in the target language, return it unchanged.
-- Do not add commentary, keys, or markdown — just the raw JSON array.${arabicRules}`;
+- Never merge, split, drop, or reorder segments. If a segment is a number, symbol, URL, or already in the target language, return it unchanged.${arabicRules}`;
 }
 
 function parseJsonArray(content, expectedLen) {
@@ -47,33 +57,85 @@ function parseJsonArray(content, expectedLen) {
   return arr.map((x) => (x == null ? "" : String(x)));
 }
 
-async function callOpenRouter(segments, targetLang, cfg) {
-  const resp = await fetch(OPENROUTER_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${cfg.apiKey}`,
-      "HTTP-Referer": cfg.referer || "https://article-to-kindle.local",
-      "X-Title": cfg.title || "Article to Kindle",
-    },
-    body: JSON.stringify({
-      model: cfg.model || "anthropic/claude-3.5-sonnet",
-      messages: [
-        { role: "system", content: systemPrompt(targetLang) },
-        { role: "user", content: JSON.stringify(segments) },
-      ],
-      temperature: 0.3,
-    }),
-  });
+// One completion attempt against a specific model. Throws with `.retryable`.
+async function complete(segments, targetLang, cfg, model) {
+  let resp;
+  try {
+    resp = await fetch(cfg.endpoint || DEFAULT_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.apiKey}` },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: systemPrompt(targetLang) },
+          { role: "user", content: JSON.stringify(segments) },
+        ],
+        temperature: 0.2,
+        max_tokens: 4096,
+      }),
+    });
+  } catch (e) {
+    const err = new Error("تعذّر الاتصال بخدمة الترجمة — تحقّق من اتصالك.");
+    err.retryable = true;
+    throw err;
+  }
   if (!resp.ok) {
     const t = await resp.text().catch(() => "");
-    throw new Error(`OpenRouter ${resp.status}: ${t.slice(0, 200)}`);
+    const err = new Error(`${model} ${resp.status}: ${t.slice(0, 160)}`);
+    // 5xx and 429 (and NVIDIA "ResourceExhausted") are transient → retry same model.
+    err.retryable = resp.status >= 500 || resp.status === 429 || /exhausted|unavailable/i.test(t);
+    throw err;
   }
   const data = await resp.json();
   const content = data && data.choices && data.choices[0] && data.choices[0].message
     ? data.choices[0].message.content
     : "";
-  return parseJsonArray(content || "", segments.length);
+  // A malformed/empty array is a transient model hiccup → retryable.
+  try {
+    return parseJsonArray(content || "", segments.length);
+  } catch (e) {
+    e.retryable = true;
+    throw e;
+  }
+}
+
+// Try the primary model with retries; on exhaustion fall back to the secondary.
+async function translateBatch(segments, targetLang, cfg) {
+  const models = [cfg.model || DEFAULT_MODEL, cfg.fallbackModel || DEFAULT_FALLBACK].filter(
+    (m, i, a) => m && a.indexOf(m) === i
+  );
+  let lastErr;
+  for (const model of models) {
+    for (let attempt = 0; attempt < MAX_ATTEMPTS_PER_MODEL; attempt++) {
+      try {
+        return await complete(segments, targetLang, cfg, model);
+      } catch (e) {
+        lastErr = e;
+        if (e.retryable === false) break; // hard error for this model → try fallback
+        await sleep(500 * (attempt + 1));
+      }
+    }
+  }
+  throw new Error("فشلت الترجمة بعد عدّة محاولات: " + (lastErr ? lastErr.message : "خطأ غير معروف"));
+}
+
+function collectTextNodes(root, doc) {
+  const SKIP = new Set(["SCRIPT", "STYLE", "CODE", "PRE"]);
+  const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      if (!node.nodeValue || node.nodeValue.trim().length === 0) return NodeFilter.FILTER_REJECT;
+      let p = node.parentNode;
+      while (p && p !== root) {
+        if (p.nodeType === 1 && SKIP.has(p.nodeName)) return NodeFilter.FILTER_REJECT;
+        p = p.parentNode;
+      }
+      return NodeFilter.FILTER_ACCEPT;
+    },
+  });
+  const nodes = [];
+  let n;
+  while ((n = walker.nextNode())) nodes.push(n);
+  return nodes;
 }
 
 function batchSegments(segments) {
@@ -95,35 +157,11 @@ function batchSegments(segments) {
 }
 
 /*
- * Collect non-empty text nodes under `root`, skipping code/style/script.
- */
-function collectTextNodes(root, doc) {
-  const SKIP = new Set(["SCRIPT", "STYLE", "CODE", "PRE"]);
-  const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
-    acceptNode(node) {
-      if (!node.nodeValue || node.nodeValue.trim().length === 0) {
-        return NodeFilter.FILTER_REJECT;
-      }
-      let p = node.parentNode;
-      while (p && p !== root) {
-        if (p.nodeType === 1 && SKIP.has(p.nodeName)) return NodeFilter.FILTER_REJECT;
-        p = p.parentNode;
-      }
-      return NodeFilter.FILTER_ACCEPT;
-    },
-  });
-  const nodes = [];
-  let n;
-  while ((n = walker.nextNode())) nodes.push(n);
-  return nodes;
-}
-
-/*
  * translateHtml({ title, html, targetLang }, cfg) -> { title, html, lang, dir }
- * cfg: { apiKey, model?, referer?, title? }
+ * cfg: { apiKey, model?, fallbackModel?, endpoint? }
  */
 export async function translateHtml({ title, html, targetLang }, cfg) {
-  if (!cfg || !cfg.apiKey) throw new Error("OpenRouter API key is required for translation");
+  if (!cfg || !cfg.apiKey) throw new Error("أضف مفتاح الترجمة (NVIDIA) في الإعدادات لتفعيل الترجمة.");
 
   const doc = new DOMParser().parseFromString(html, "text/html");
   const nodes = collectTextNodes(doc.body, doc);
@@ -134,13 +172,13 @@ export async function translateHtml({ title, html, targetLang }, cfg) {
 
   const translated = [];
   for (const batch of batches) {
-    // Preserve leading/trailing whitespace (the model tends to trim it).
+    // Preserve leading/trailing whitespace (models tend to trim it).
     const info = batch.map((s) => ({
       core: s.trim(),
       lead: s.match(/^\s*/)[0],
       trail: s.match(/\s*$/)[0],
     }));
-    const out = await callOpenRouter(info.map((t) => t.core), targetLang, cfg);
+    const out = await translateBatch(info.map((t) => t.core), targetLang, cfg);
     out.forEach((t, i) => translated.push(info[i].lead + t + info[i].trail));
   }
 
