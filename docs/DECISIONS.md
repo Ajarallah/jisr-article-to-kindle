@@ -77,6 +77,7 @@ Each entry: **what** was decided, **why**, and the **precedent** it was based on
 ### Money / external-commitment ledger (for the final review)
 
 - **No paid account created.** No OpenRouter, SMTP, or hosting account was signed up for.
-- **No real email sent to any Kindle.** The send path is built and unit-tested with mocks; it requires the owner's own SMTP credentials + `@kindle.com` address in `.env` to actually deliver.
-- **No secret committed.** `.env` is git-ignored; only `.env.example` (placeholders) is in the repo.
+- **One real test email WAS sent** (2026-07-05) during live testing: from the owner's own `ajarallah93@gmail.com` to the owner's own Kindle address via Gmail SMTP. Gmail accepted it (`accepted:[kindle addr], rejected:[]`); Amazon likely dropped it because the sender was not yet on the approved list — the exact friction that motivated the OAuth pivot (D9).
+- **The owner's Gmail App Password is stored locally** in `server/.env` (git-ignored, never committed). If the email path is not used, the owner can revoke it in Google account settings.
+- **No secret committed.** `.env` and `.stk-credentials.json` are git-ignored; only `.env.example` (placeholders) is in the repo.
 - **Assets downloaded:** Mozilla Readability (Apache-2.0), JSZip (MIT/GPL dual), Amiri font (OFL-1.1) — all redistributable.
