@@ -27,13 +27,19 @@ translation**.
 ## Features
 
 - **One‑click send** to your Kindle library (syncs to every device + the Kindle app).
-- **Clean extraction** with Mozilla Readability — works on paywalled / logged‑in
-  pages you can already read, because it reads the rendered page in your browser.
+- **Robust extraction** — Mozilla Readability with a **main-region fallback** for
+  pages that split content across sibling containers (e.g. AWS/AEM "what-is"
+  pages), where naive extractors grab only the first section. Works on
+  paywalled / logged-in pages you can already read (it reads the rendered page).
 - **Clean EPUB3** output — not Amazon's lossy web capture.
-- **Arabic & RTL done right** — `page-progression-direction`, `dir="rtl"`, and an
-  **embedded Amiri font** so Arabic never renders as empty boxes on Kindle.
-- **Optional AI translation** before sending (English ⇄ Arabic and more), with a
-  literary Arabic style: فصحى وسطى, no tashkeel.
+- **Arabic & RTL done right** — content-based whole-document direction,
+  `page-progression-direction`, `dir="rtl"`, and an **embedded Amiri font** so
+  Arabic never renders as empty boxes on Kindle. Inline English inside Arabic
+  renders correctly.
+- **Optional AI translation** before sending (English ⇄ Arabic and more), via
+  NVIDIA (`glm-5.2`), with a literary Arabic style: فصحى وسطى, no tashkeel.
+- **Drag & drop files** — drop a Markdown (`.md`) or Word (`.docx`) file (e.g. a
+  ChatGPT answer you exported) and it becomes a clean EPUB on your Kindle.
 - **Download EPUB** instead of sending, any time.
 - **Private by design** — see [Privacy](#privacy).
 
@@ -79,11 +85,17 @@ A packaged zip for the Web Store is produced by `scripts/package-extension.sh`.
 4. **إرسال إلى كندل** (Send to Kindle) — it appears on your Kindle in a minute or two.
    Or **تنزيل EPUB** to just save the file.
 
+To send a **file** instead of a page, click *"أرسِل ملفًّا (md / docx)"* in the
+popup and drop your file.
+
 ### Translation (bring your own key)
 
-Translation is optional and uses your own [OpenRouter](https://openrouter.ai/keys)
-key, stored locally in the browser. When enabled, the article text is sent
-directly from your browser to OpenRouter — never to us.
+Translation is optional and uses your own [NVIDIA](https://build.nvidia.com) API
+key (`nvapi-…`), stored locally in the browser. The default model is `z-ai/glm-5.2`
+— picked after benchmarking five models on Arabic translation for quality, speed,
+and reliability (see [`docs/05`](docs/05-translation-model-selection.md)); it
+falls back to `deepseek-v4-pro` and retries transient rate-limits. When enabled,
+the article text is sent directly from your browser to NVIDIA — never to us.
 
 ## Privacy
 
