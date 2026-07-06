@@ -17,7 +17,6 @@
   html,body{margin:0;padding:0}
   body{background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.7;-webkit-font-smoothing:antialiased}
   .wrap{max-width:920px;margin:0 auto;padding:40px 22px 80px}
-
   header.top{display:flex;align-items:flex-start;gap:14px;margin-bottom:10px}
   .badge{display:grid;place-items:center;width:44px;height:44px;border-radius:12px;background:var(--accent);color:#fff;flex:none}
   h1{font-size:24px;margin:0;font-weight:700;letter-spacing:-.3px}
@@ -27,17 +26,14 @@
   .pill.ok{background:var(--ok-bg);color:var(--ok)}
   .pill.warn{background:var(--warn-bg);color:var(--warn)}
   .pill.neutral{background:#eef0f2;color:var(--muted)}
-
   section{margin:0 0 30px}
   h2{font-size:19px;font-weight:650;margin:0 0 4px;letter-spacing:-.2px}
   h2 .mk{color:var(--accent);margin-inline-end:8px}
   .lead{color:var(--muted);font-size:14.5px;margin:0 0 16px}
-
   .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px}
   .grid{display:grid;gap:14px}
   .grid.two{grid-template-columns:1fr 1fr}
   @media(max-width:680px){.grid.two{grid-template-columns:1fr}}
-
   .flow{display:flex;align-items:stretch;gap:10px;flex-wrap:wrap}
   .node{flex:1;min-width:150px;background:var(--card);border:1px solid var(--border-strong);border-radius:12px;padding:14px 16px;text-align:center}
   .node .t{font-weight:650;font-size:14.5px}
@@ -46,7 +42,6 @@
   .node.accent .t{color:var(--accent-press)}
   .arrow{display:grid;place-items:center;color:var(--accent);font-size:20px;font-weight:700;min-width:22px}
   .branch{color:var(--muted);font-size:13px;margin-top:10px;text-align:center}
-
   ul.clean{list-style:none;padding:0;margin:0}
   ul.clean li{position:relative;padding-inline-start:22px;margin:9px 0;font-size:14.5px}
   ul.clean li::before{content:"";position:absolute;inset-inline-start:2px;top:11px;width:7px;height:7px;border-radius:50%;background:var(--accent)}
@@ -54,23 +49,23 @@
   ul.clean.warn li::before{background:#d9a441}
   li .k{font-weight:650}
   li .muted{color:var(--muted)}
-
+  table.cmp{width:100%;border-collapse:collapse;font-size:13.5px}
+  table.cmp th,table.cmp td{text-align:right;padding:9px 10px;border-bottom:1px solid var(--border)}
+  table.cmp th{color:var(--muted);font-weight:600}
+  table.cmp td.win{color:var(--ok);font-weight:650}
   .dec{display:flex;gap:12px;padding:13px 0;border-bottom:1px solid var(--border)}
   .dec:last-child{border-bottom:0}
   .dec .id{flex:none;font-family:var(--mono);font-size:12px;font-weight:700;color:var(--accent-press);background:var(--accent-soft);padding:3px 8px;border-radius:7px;height:fit-content}
   .dec .body .h{font-weight:650;font-size:14.5px}
   .dec .body .p{color:var(--muted);font-size:13.5px;margin-top:2px}
-
-  pre.tree{background:#0f1416;color:#cfd8dc;border-radius:12px;padding:16px 18px;overflow:auto;font-family:var(--mono);font-size:12.5px;line-height:1.6;direction:ltr;text-align:left}
   .tag{font-family:var(--mono);font-size:12px;background:#eef0f2;color:#3b3f45;padding:1px 6px;border-radius:5px}
-
   .stat-row{display:flex;gap:12px;flex-wrap:wrap}
   .stat{flex:1;min-width:120px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
   .stat .n{font-size:24px;font-weight:700;letter-spacing:-.5px}
   .stat .l{color:var(--muted);font-size:12.5px;margin-top:2px}
   .stat .n.ok{color:var(--ok)} .stat .n.tealc{color:var(--accent)}
-
   footer{color:var(--muted);font-size:12.5px;text-align:center;margin-top:40px;padding-top:20px;border-top:1px solid var(--border)}
+  a{color:var(--accent-press)}
 </style>
 </head>
 <body>
@@ -85,174 +80,120 @@
     </span>
     <div>
       <h1>المقال إلى كندل</h1>
-      <p class="sub">إضافة كروم تحوّل أيّ مقال إلى EPUB نظيف وترسله إلى كندل، بعربيّة سليمة وترجمة اختيارية.</p>
+      <p class="sub">إضافة متصفّح واحدة تحوّل أيّ مقال إلى EPUB نظيف وترسله إلى كندل — بعربيّة سليمة وترجمة اختيارية، بلا خادم وبلا بريد.</p>
     </div>
   </header>
 
   <div class="meta-row">
-    <span class="pill ok">النسخة الأوليّة مبنيّة</span>
-    <span class="pill warn">بانتظار تسجيل دخول أمازون مرّة واحدة</span>
-    <span class="pill neutral">٨ التزامات git · ٥ اختبارات تنجح</span>
+    <span class="pill ok">النواة مكتملة</span>
+    <span class="pill ok">التوصيل متحقَّق من مصدر أمازون الرسميّ</span>
+    <span class="pill warn">الإرسال الحيّ يحتاج تسجيل دخولك في أمازون</span>
+    <span class="pill neutral">مرفوع على GitHub · ٥ اختبارات تنجح</span>
     <span class="pill neutral">آخر تحديث: ٦ يوليو ٢٠٢٦</span>
   </div>
 
   <section>
-    <h2><span class="mk">▸</span>ما الذي بُني</h2>
-    <p class="lead">قطعتان تعملان معًا، وكلّ المنطق مكتمل ومتماسك.</p>
-    <div class="grid two">
-      <div class="card">
-        <div style="font-weight:650;margin-bottom:6px">١. إضافة كروم <span class="tag">Manifest V3</span></div>
-        <ul class="clean">
-          <li>تستخلص المقال داخل المتصفّح <span class="muted">(Readability) — يتجاوز الحوائط المدفوعة</span></li>
-          <li>تبني <span class="k">EPUB3</span> نظيفًا مع اتجاه RTL وخطّ عربيّ مضمّن (Amiri)</li>
-          <li>ترجمة محلّية اختياريّة عبر OpenRouter <span class="muted">(بمفتاحك، بلا خادم)</span></li>
-          <li>واجهة عربيّة كاملة بتصميم مضبوط</li>
-        </ul>
+    <h2><span class="mk">▸</span>أين وصلنا</h2>
+    <p class="lead">تطوّر المعمار عبر ثلاث محطّات حتى استقرّ على أبسط وأمتن صورة.</p>
+    <div class="card">
+      <div class="flow">
+        <div class="node"><div class="t">١. بريد + خادم</div><div class="d">يتطلّب اعتماد مُرسِل — مرفوض</div></div>
+        <div class="arrow">←</div>
+        <div class="node"><div class="t">٢. خادم OAuth</div><div class="d">معقّد وغير مؤكَّد</div></div>
+        <div class="arrow">←</div>
+        <div class="node accent"><div class="t">٣. إضافة واحدة</div><div class="d">جلسة أمازون مباشرةً</div></div>
       </div>
-      <div class="card">
-        <div style="font-weight:650;margin-bottom:6px">٢. خدمة التوصيل <span class="tag">Node / Express</span></div>
-        <ul class="clean">
-          <li>ربط كندل عبر <span class="k">حساب أمازون (OAuth)</span> — بلا بريد ولا اعتماد مُرسِل</li>
-          <li>توقيع أمازون التشفيريّ الدقيق عبر <span class="tag">node:crypto</span></li>
-          <li>نقاط: ربط، تسجيل، حالة، إرسال، إلغاء ربط</li>
-          <li>إرسال بالبريد كخطّ رجوع مثبَت</li>
-        </ul>
-      </div>
+      <div class="branch">استقرّ الحلّ على تقليد آليّة إضافة أمازون الرسميّة نفسها — بلا خادم، بلا بريد، بلا اعتماد مُرسِل.</div>
     </div>
   </section>
 
   <section>
-    <h2><span class="mk">▸</span>البنية المعماريّة</h2>
-    <p class="lead">المحتوى يذهب من متصفّحك إلى حسابك في أمازون مباشرةً؛ لا طرف ثالث يطّلع عليه.</p>
+    <h2><span class="mk">▸</span>البنية النهائيّة</h2>
+    <p class="lead">كل شيء داخل إضافة واحدة. المحتوى يذهب من متصفّحك إلى حسابك في أمازون مباشرةً.</p>
     <div class="card">
       <div class="flow">
-        <div class="node accent"><div class="t">متصفّحك</div><div class="d">الإضافة تبني EPUB</div></div>
+        <div class="node accent"><div class="t">متصفّحك</div><div class="d">استخلاص ← ترجمة ← EPUB</div></div>
         <div class="arrow">←</div>
-        <div class="node"><div class="t">خدمة التوصيل</div><div class="d">توقيع + رفع (جهازك / VPS)</div></div>
+        <div class="node"><div class="t">جلسة أمازون</div><div class="d">كوكيز + رمز CSRF</div></div>
         <div class="arrow">←</div>
-        <div class="node accent"><div class="t">مكتبة كندل</div><div class="d">عبر Send to Kindle</div></div>
+        <div class="node accent"><div class="t">مكتبة كندل</div><div class="d">كل أجهزتك وتطبيقاتك</div></div>
       </div>
       <div class="branch">↑ الترجمة الاختياريّة تذهب من المتصفّح مباشرةً إلى OpenRouter بمفتاحك</div>
     </div>
   </section>
 
   <section>
-    <h2><span class="mk">▸</span>التحوّل الكبير: من البريد إلى تسجيل الدخول</h2>
-    <p class="lead">تجربة المستخدم كشفت أنّ طريق البريد متعب ومريب؛ فبحثنا في المنافسين وتحوّلنا لطريق أمازون الرسميّ.</p>
-    <div class="grid two">
-      <div class="card">
-        <div class="pill warn" style="margin-bottom:10px">قبل — طريق البريد</div>
-        <ul class="clean warn">
-          <li>كلمة مرور تطبيق + إعداد SMTP</li>
-          <li>خطوة «اعتماد المُرسِل» في أمازون على كل إرسال</li>
-          <li>المحتوى يمرّ بخادم وسيط</li>
-          <li><span class="muted">وهي عين ما يعلق فيه كل المنافسين (Push to Kindle، KTool، Readwise)</span></li>
-        </ul>
-      </div>
-      <div class="card">
-        <div class="pill ok" style="margin-bottom:10px">بعد — تسجيل دخول أمازون</div>
-        <ul class="clean ok">
-          <li>تسجيل دخول أمازون مرّة واحدة</li>
-          <li>بلا بريد، بلا اعتماد مُرسِل</li>
-          <li>المحتوى يذهب لأمازون مباشرةً</li>
-          <li><span class="muted">وهو ما تستعمله أمازون نفسها في إضافتها الرسميّة</span></li>
-        </ul>
-      </div>
-    </div>
-  </section>
-
-  <section>
     <h2><span class="mk">▸</span>حالة التحقّق</h2>
-    <p class="lead">صريح: ما أثبتُّه بنفسي، وما ينتظر تسجيل دخولك (لأنّي لا أملك حسابك).</p>
+    <p class="lead">صريح: ما أثبتُّه، وما ينتظر تسجيل دخولك في أمازون (لا أملك حسابك، وكلمة المرور ممنوعة عليّ).</p>
     <div class="grid two">
       <div class="card">
         <div class="pill ok" style="margin-bottom:10px">تحقّق ✓</div>
         <ul class="clean ok">
-          <li>بناء EPUB3 على مقال عربيّ حقيقيّ <span class="muted">(اختبار آليّ)</span></li>
-          <li>توقيع أمازون متحقَّق ذاتيًّا <span class="muted">(يُفكّ ويطابق البصمة)</span></li>
-          <li>الخادم يقلع وكل نقاطه تستجيب</li>
-          <li>بريد تجريبيّ خرج فعلًا وقبِله جيميل</li>
-          <li>حزمة النشر تُبنى نظيفة (٢٠ ملفًّا)</li>
+          <li><span class="k">التوصيل مطابق بايتًا ببايت</span> لمصدر إضافة أمازون الرسميّة v2.1.1.7 (قرأتُ كودها من القرص)</li>
+          <li>صحّحتُ فرقين حقيقيّين: نوع <span class="tag">application/epub+zip</span> وفحص الدخول عبر <span class="tag">checkAuth</span></li>
+          <li>اختبار حيّ بجلسة أمازون: جلب CSRF ووصول النقاط <span class="muted">(200)</span></li>
+          <li>بناء EPUB3 على مقال عربيّ حقيقيّ <span class="muted">(اختبارات آليّة ٥/٥)</span></li>
+          <li>الإضافة متّسقة داخليًّا، وحزمة النشر تُبنى نظيفة</li>
         </ul>
       </div>
       <div class="card">
         <div class="pill warn" style="margin-bottom:10px">بانتظارك ⏳</div>
         <ul class="clean warn">
-          <li>ربط حساب كندل <span class="muted">(تسجيل دخول أمازون مرّة)</span></li>
-          <li>قبول أمازون للتوقيع وصيغة الرفع <span class="muted">(لا يُختبر إلّا بحساب حيّ)</span></li>
-          <li>تحميل الإضافة في متصفّحك</li>
-          <li class="muted">طريق البريد يبقى شبكة أمان إن تعثّر شيء</li>
+          <li>إرسال حيّ كامل من طرف إلى طرف <span class="muted">(يتطلّب أن تكون مسجّل الدخول في أمازون بالمتصفّح — نفس شرط إضافة أمازون)</span></li>
+          <li>تحميل الإضافة في متصفّحك وتجربتها</li>
+          <li class="muted">البروتوكول مطابق لإضافة رسميّة عاملة — أقوى ضمان ممكن قبل إرسال بجلسة مسجّلة</li>
         </ul>
       </div>
     </div>
   </section>
 
   <section>
-    <h2><span class="mk">▸</span>القرارات الكبرى والسوابق</h2>
-    <p class="lead">مسجّلة كاملة في <span class="tag">docs/DECISIONS.md</span> — هذه خلاصتها.</p>
-    <div class="card">
-      <div class="dec"><span class="id">D1</span><div class="body"><div class="h">الصيغة EPUB3</div><div class="p">أمازون لم تعُد تقبل الصيغ القديمة — تحقّقنا لا افترضنا.</div></div></div>
-      <div class="dec"><span class="id">D2</span><div class="body"><div class="h">بناء الملف داخل المتصفّح</div><div class="p">يتجاوز الحوائط المدفوعة ويحفظ الخصوصيّة.</div></div></div>
-      <div class="dec"><span class="id">D3</span><div class="body"><div class="h">الترجمة عبر OpenRouter</div><div class="p">التزامًا بقاعدتك: أيّ نموذج خارجيّ → OpenRouter، لا مفتاح Gemini.</div></div></div>
-      <div class="dec"><span class="id">D5</span><div class="body"><div class="h">خطّ عربيّ مضمّن (Amiri)</div><div class="p">بدونه يعرض كندل مربّعات فارغة مكان الحروف.</div></div></div>
-      <div class="dec"><span class="id">D9</span><div class="body"><div class="h">التحوّل إلى Send-to-Kindle OAuth</div><div class="p">إزالة خطوة اعتماد المُرسِل. السابقة: إذنك باستخدام واجهات غير رسميّة عند الحاجة.</div></div></div>
-      <div class="dec"><span class="id">D9·2</span><div class="body"><div class="h">تنفيذه على الخادم لا المتصفّح</div><div class="p">المتصفّح يصطدم بحاجز CORS وتوقيع غير قياسيّ؛ الخادم ينفّذهما بدقّة.</div></div></div>
-      <div class="dec"><span class="id">D10</span><div class="body"><div class="h">ترجمة بلا خادم (بمفتاحك)</div><div class="p">تُلغي بنيتنا التحتيّة للترجمة وتُبقي الخصوصيّة نظيفة.</div></div></div>
+    <h2><span class="mk">▸</span>أين نتفوّق على المنافسين</h2>
+    <p class="lead">الجميع (عدا أمازون) يستعمل البريد ويمرّر محتواك بخادمه؛ وأمازون نفسها لا تترجم ولا تُحسِن العربيّة.</p>
+    <div class="card" style="overflow-x:auto">
+      <table class="cmp">
+        <tr><th>الأداة</th><th>التوصيل</th><th>ترجمة</th><th>عربيّة/RTL</th><th>الخصوصيّة</th></tr>
+        <tr><td>Push to Kindle / KTool / Instapaper</td><td>بريد + اعتماد مُرسِل</td><td>✗</td><td>ضعيفة</td><td>عبر خادمهم</td></tr>
+        <tr><td>Send to Kindle (أمازون الرسميّة)</td><td>جلسة أمازون</td><td>✗</td><td>ضعيفة</td><td>جيّدة</td></tr>
+        <tr><td class="win">المقال إلى كندل</td><td class="win">جلسة أمازون</td><td class="win">✓ ذكاء اصطناعيّ</td><td class="win">✓ خطّ عربيّ مضمّن</td><td class="win">الأفضل</td></tr>
+      </table>
     </div>
+  </section>
+
+  <section>
+    <h2><span class="mk">▸</span>القرارات المفصليّة</h2>
+    <div class="card">
+      <div class="dec"><span class="id">D11</span><div class="body"><div class="h">إضافة واحدة عبر جلسة أمازون</div><div class="p">تقليد آليّة أمازون الرسميّة داخل إضافتنا — تقاعد الخادم. تصحيح لمخالفتي «ابنِ فوق البنية القائمة».</div></div></div>
+      <div class="dec"><span class="id">D12</span><div class="body"><div class="h">تحقّق من المصدر + حيّ</div><div class="p">قراءة كود أمازون v2.1.1.7 من القرص، وتصحيح نوع MIME وفحص الدخول، واختبار حيّ للوصول.</div></div></div>
+      <div class="dec"><span class="id">D3·D5</span><div class="body"><div class="h">ترجمة OpenRouter + خطّ Amiri مضمّن</div><div class="p">التزامًا بقاعدة OpenRouter، وحلًّا لمربّعات كندل الفارغة في العربيّة.</div></div></div>
+    </div>
+    <p class="lead" style="margin-top:12px">السجلّ الكامل في <span class="tag">docs/DECISIONS.md</span>، وتحليل المنافسين في <span class="tag">docs/04-competitive-analysis.md</span>.</p>
   </section>
 
   <section>
     <h2><span class="mk">▸</span>أرقام المشروع</h2>
     <div class="stat-row">
-      <div class="stat"><div class="n tealc">٢</div><div class="l">قطعتان: إضافة + خادم</div></div>
-      <div class="stat"><div class="n ok">٥/٥</div><div class="l">اختبارات آليّة تنجح</div></div>
-      <div class="stat"><div class="n tealc">١٠</div><div class="l">قرارات موثّقة</div></div>
-      <div class="stat"><div class="n tealc">٨</div><div class="l">التزامات git</div></div>
-      <div class="stat"><div class="n ok">٠</div><div class="l">حسابات مدفوعة أُنشئت</div></div>
+      <div class="stat"><div class="n tealc">١</div><div class="l">إضافة واحدة، بلا خادم</div></div>
+      <div class="stat"><div class="n ok">٥/٥</div><div class="l">اختبارات تنجح</div></div>
+      <div class="stat"><div class="n ok">١٠٠٪</div><div class="l">تطابق مع مصدر أمازون</div></div>
+      <div class="stat"><div class="n tealc">١٢</div><div class="l">قرارًا موثّقًا</div></div>
+      <div class="stat"><div class="n ok">GitHub</div><div class="l">مرفوع (خاصّ)</div></div>
     </div>
-  </section>
-
-  <section>
-    <h2><span class="mk">▸</span>سجلّ المال والخارجيّ</h2>
-    <div class="card">
-      <ul class="clean">
-        <li><span class="k">لم يُنشأ أيّ حساب مدفوع</span> — لا OpenRouter، لا استضافة، لا خدمة إرسال.</li>
-        <li>بريد تجريبيّ واحد أُرسل فعلًا من بريدك إلى كندلك (قبِله جيميل).</li>
-        <li>كلمة مرور تطبيق جيميل محفوظة محلّيًّا في <span class="tag">server/.env</span> <span class="muted">(لا تُرفع؛ يمكنك إلغاؤها)</span>.</li>
-        <li><span class="k">لم يُلتزم أيّ سرّ</span> — <span class="tag">.env</span> و<span class="tag">.stk-credentials.json</span> مستثناة من git.</li>
-      </ul>
-    </div>
-  </section>
-
-  <section>
-    <h2><span class="mk">▸</span>بنية الملفّات</h2>
-    <pre class="tree">article-to-kindle/
-├── extension/            إضافة كروم (MV3)
-│   ├── manifest.json
-│   ├── src/  popup · options · extract · epub · translate
-│   └── lib/  Readability · JSZip · Amiri font
-├── server/               خدمة التوصيل (Node)
-│   ├── src/  stk.js · server.js · mailer.js · translate.js
-│   └── test/ stk + epub-pipeline  (5 tests)
-├── docs/    market-research · analysis · DECISIONS
-├── store/   PRIVACY · LISTING  (جاهز للنشر)
-├── scripts/ package-extension.sh
-├── README.md · SUMMARY.md · PROGRESS.html</pre>
   </section>
 
   <section>
     <h2><span class="mk">▸</span>الخطوة التالية</h2>
     <div class="card">
       <ul class="clean">
-        <li><span class="k">١) ربط كندل الآن:</span> تفتح رابط أمازون، تسجّل الدخول، وتلصق رابط النتيجة — وأُكمل أنا التسجيل والإرسال. لحظة الحقيقة الوحيدة.</li>
-        <li><span class="k">٢) إن نجح:</span> ننشر الخادم على VPS (تشتريه عند الحاجة) لتعمل بلا حاسوبك، ثم نرفع الإضافة لمتجر كروم.</li>
-        <li><span class="k">٣) إن تعثّر عند أمازون:</span> نعالج الفرق (غالبًا صيغة الرفع)، والبريد شبكة أمان.</li>
+        <li><span class="k">١) سجّل الدخول في أمازون</span> بالمتصفّح، ثم حمّل الإضافة (Load unpacked) وأرسل مقالًا — هذا يثبت الإرسال الحيّ.</li>
+        <li><span class="k">٢) خارطة الطريق:</span> معاينة قبل الإرسال، سجلّ إرسال، إرسال التحديد، واختيار جهاز — مقتبسة من دراسة إضافة أمازون.</li>
+        <li><span class="k">٣) النشر:</span> أصول متجر كروم جاهزة في <span class="tag">store/</span> (خصوصيّة + قائمة + تبريرات صلاحيات).</li>
       </ul>
     </div>
   </section>
 
   <footer>
-    المقال إلى كندل — تقرير تقدّم داخليّ · النسخة الأوليّة مبنيّة ومتماسكة · ٦ يوليو ٢٠٢٦
+    المقال إلى كندل — تقرير تقدّم · النواة مكتملة والتوصيل متحقَّق من المصدر · ٦ يوليو ٢٠٢٦
   </footer>
 
 </div>
