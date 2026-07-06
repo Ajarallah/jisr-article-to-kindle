@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>المقال إلى كندل — ملف</title>
+  <link rel="stylesheet" href="drop.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <span class="brand-badge" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 5.5A2 2 0 0 1 5 3.5h5v16.5H5a2 2 0 0 0-2 2V5.5z" />
+          <path d="M21 5.5a2 2 0 0 0-2-2h-5v16.5h5a2 2 0 0 1 2 2V5.5z" />
+        </svg>
+      </span>
+      <h1>إرسال ملفّ إلى كندل</h1>
+    </header>
+
+    <p class="hint">اسحب ملفّ <code>md</code> أو <code>docx</code> (مثل نتيجة ChatGPT مُصدَّرة) وأفلته هنا — يُحوَّل إلى EPUB نظيف ويُرسَل إلى كندل.</p>
+
+    <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="أفلت الملف أو اختر ملفا">
+      <svg class="dz-icon" viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 16V4" /><path d="M6 10l6-6 6 6" /><path d="M4 20h16" />
+      </svg>
+      <div class="dz-title">اسحب الملفّ هنا</div>
+      <div class="dz-sub">أو <button id="pickBtn" class="linkbtn" type="button">اختر ملفًا</button> · md، docx</div>
+      <input id="fileInput" type="file" accept=".md,.markdown,.mdown,.mkd,.txt,.docx" hidden />
+    </div>
+
+    <section id="articleCard" class="card hidden">
+      <div id="articleTitle" class="title"></div>
+      <div id="articleMeta" class="meta"></div>
+    </section>
+
+    <section id="translatePanel" class="card hidden">
+      <label class="switch-row">
+        <span class="switch-label">ترجمة قبل الإرسال</span>
+        <span class="switch">
+          <input type="checkbox" id="translateToggle" />
+          <span class="track"><span class="thumb"></span></span>
+        </span>
+      </label>
+      <div id="translateOptions" class="translate-options hidden">
+        <label class="field">
+          <span class="field-label">إلى</span>
+          <select id="targetLang">
+            <option value="Arabic">العربية</option>
+            <option value="English">الإنجليزية</option>
+            <option value="French">الفرنسية</option>
+            <option value="Spanish">الإسبانية</option>
+            <option value="German">الألمانية</option>
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <div id="actions" class="actions hidden">
+      <button id="sendBtn" class="btn primary">إرسال إلى كندل</button>
+      <button id="downloadBtn" class="btn ghost">تنزيل EPUB</button>
+    </div>
+
+    <div id="status" class="status hidden"></div>
+  </div>
+
+  <script src="../lib/marked.min.js"></script>
+  <script src="../lib/mammoth.browser.min.js"></script>
+  <script src="../lib/jszip.min.js"></script>
+  <script type="module" src="drop.js"></script>
+</body>
+</html>

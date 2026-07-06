@@ -185,6 +185,8 @@ els.translateToggle.addEventListener("change", () => {
   clearStatus();
 });
 els.settingsBtn.addEventListener("click", () => chrome.runtime.openOptionsPage());
+const fileBtn = document.getElementById("fileBtn");
+if (fileBtn) fileBtn.addEventListener("click", () => chrome.tabs.create({ url: chrome.runtime.getURL("src/drop.html") }));
 els.sendBtn.addEventListener("click", onSend);
 els.downloadBtn.addEventListener("click", onDownload);
 
