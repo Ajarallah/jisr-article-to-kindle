@@ -72,6 +72,14 @@ Each entry: **what** was decided, **why**, and the **precedent** it was based on
 - **Honesty note:** Two items remain unverifiable without a live Amazon login and were left for a one-time smoke test: whether Amazon accepts the reproduced signature, and whether it accepts `inputFormat=epub` (source hard-codes `outputFormat=MOBI`). The **verified email path is retained as a working fallback** so the product is never left without a delivery method.
 - **Precedent:** Owner's "verify the real mechanism, don't assume" instruction, and "isolated, reversible, keep a fallback" engineering discipline.
 
+## D11 — Adopt the official Send-to-Kindle mechanism inside ONE extension (retire the server)
+
+- **What:** The owner pointed out that Amazon ships an official "Send to Kindle" browser extension, so using ours + theirs means two extensions — bad UX. We reverse-engineered the official extension's actual delivery mechanism (source on disk) and will replicate it **inside our single extension**: build the translated Arabic EPUB, then deliver it client-side via the user's Amazon session. Full protocol in `docs/03-official-s2k-mechanism.md`.
+- **Why it supersedes D9/D9.2/D10's delivery:** The official flow authenticates with the **user's amazon.com session cookies + an `anti-csrftoken-a2z` header** — NOT the OAuth device-registration + non-standard RSA signing of `stkclient`. That means: no server, no OAuth, no signing, no CORS gamble, and — decisively — **it removes the "will Amazon accept it?" risk**, because we use the exact same authenticated web endpoints (`/sendtokindle/init` → S3 PUT → `/sendtokindle/send-v2`) that Amazon's own extension uses. It also confirmed Amazon's pipeline accepts a directly-uploaded **EPUB**, which is our output.
+- **Consequence:** The `server/` STK code (`stk.js`, `/stk/*`) and the OAuth device flow are **retired to optional/legacy** (kept in repo, not deleted, per surgical-change discipline). The default product becomes a single, serverless extension. Translation stays client-side (D10). Email stays as a deep fallback.
+- **Precedent:** The owner's own rules — "Tool Discovery / build ON TOP of existing infrastructure, don't rebuild from scratch" (which I violated by rebuilding delivery in D9) and "build the real user experience." This decision corrects that miss.
+- **Honesty note:** This is still Amazon's private (undocumented) web API; it can change. But it is materially lower-risk than D9 because it is the identical mechanism a shipping first-party extension depends on.
+
 ---
 
 ### Money / external-commitment ledger (for the final review)
