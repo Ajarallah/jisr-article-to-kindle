@@ -1,4 +1,5 @@
 import { buildEpub } from "./epub.js";
+import { translateHtml } from "./translate.js";
 
 const els = {
   title: document.getElementById("articleTitle"),
@@ -6,21 +7,24 @@ const els = {
   translateToggle: document.getElementById("translateToggle"),
   translateOptions: document.getElementById("translateOptions"),
   targetLang: document.getElementById("targetLang"),
-  kindleEmail: document.getElementById("kindleEmail"),
+  deliveryInfo: document.getElementById("deliveryInfo"),
   sendBtn: document.getElementById("sendBtn"),
   downloadBtn: document.getElementById("downloadBtn"),
   settingsBtn: document.getElementById("settingsBtn"),
   status: document.getElementById("status"),
 };
 
-let article = null; // extracted article object
+let article = null;
 let settings = null;
+let delivery = { mode: null }; // "kindle" | "email" | null
 
 const DEFAULT_SETTINGS = {
   backendUrl: "http://localhost:8787",
   kindleEmail: "",
   translateByDefault: false,
   defaultTargetLang: "Arabic",
+  openrouterKey: "",
+  openrouterModel: "anthropic/claude-3.5-sonnet",
 };
 
 function setStatus(kind, html) {
@@ -32,12 +36,18 @@ function clearStatus() {
   els.status.classList.add("hidden");
 }
 
+function backend() {
+  return (settings.backendUrl || "").replace(/\/$/, "");
+}
+
 function sanitizeFilename(name) {
-  return (name || "article")
-    .replace(/[\\/:*?"<>|]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 80) || "article";
+  return (
+    (name || "article")
+      .replace(/[\\/:*?"<>|]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 80) || "article"
+  );
 }
 
 async function loadSettings() {
@@ -46,17 +56,38 @@ async function loadSettings() {
   els.translateToggle.checked = !!settings.translateByDefault;
   els.translateOptions.classList.toggle("hidden", !settings.translateByDefault);
   if (settings.defaultTargetLang) els.targetLang.value = settings.defaultTargetLang;
-  if (settings.kindleEmail) {
-    els.kindleEmail.textContent = settings.kindleEmail;
-  } else {
-    els.kindleEmail.innerHTML =
-      '<a href="#" id="openSettingsLink">تحديد بريد كندل ←</a>';
-    document
-      .getElementById("openSettingsLink")
-      .addEventListener("click", (e) => {
-        e.preventDefault();
-        chrome.runtime.openOptionsPage();
-      });
+}
+
+// Decide how this send will be delivered, cheaply (no Amazon round-trip).
+async function detectDelivery() {
+  try {
+    const resp = await fetch(backend() + "/health", { signal: AbortSignal.timeout(4000) });
+    const h = await resp.json();
+    if (h.kindleConnected) {
+      delivery = { mode: "kindle" };
+      els.deliveryInfo.textContent = "حساب كندل ✓";
+    } else if (h.smtpConfigured && settings.kindleEmail) {
+      delivery = { mode: "email" };
+      els.deliveryInfo.textContent = settings.kindleEmail;
+    } else {
+      delivery = { mode: null };
+      els.deliveryInfo.innerHTML = '<a href="#" id="openSettingsLink">اربط حساب كندل ←</a>';
+      wireSettingsLink();
+    }
+  } catch (e) {
+    delivery = { mode: null };
+    els.deliveryInfo.innerHTML = '<a href="#" id="openSettingsLink">شغّل خدمة التوصيل ←</a>';
+    wireSettingsLink();
+  }
+}
+
+function wireSettingsLink() {
+  const link = document.getElementById("openSettingsLink");
+  if (link) {
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      chrome.runtime.openOptionsPage();
+    });
   }
 }
 
@@ -68,20 +99,11 @@ async function extractCurrentArticle() {
     return;
   }
   try {
-    // Inject Readability, then the extractor. The extractor's IIFE return
-    // value becomes the executeScript result.
-    await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      files: ["lib/Readability.js"],
-    });
-    const results = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      files: ["src/extract.js"],
-    });
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["lib/Readability.js"] });
+    const results = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["src/extract.js"] });
     const result = results && results[0] && results[0].result;
     if (!result || !result.ok) {
-      els.title.textContent =
-        "تعذر العثور على مقال قابل للقراءة في هذه الصفحة.";
+      els.title.textContent = "تعذر العثور على مقال قابل للقراءة في هذه الصفحة.";
       els.title.classList.remove("skeleton");
       return;
     }
@@ -103,29 +125,19 @@ async function extractCurrentArticle() {
 }
 
 async function translateArticle(art, targetLang) {
-  const resp = await fetch(settings.backendUrl.replace(/\/$/, "") + "/translate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      title: art.title,
-      html: art.content,
-      targetLang,
-      sourceLang: art.lang || "",
-    }),
-  });
-  if (!resp.ok) {
-    const txt = await resp.text().catch(() => "");
-    throw new Error(`Translation failed (${resp.status}). ${txt.slice(0, 140)}`);
+  if (!settings.openrouterKey) {
+    throw new Error("أضف مفتاح OpenRouter في الإعدادات لتفعيل الترجمة.");
   }
-  const data = await resp.json();
-  const rtlLangs = ["Arabic", "Hebrew", "Persian", "Urdu"];
-  const newDir = rtlLangs.includes(targetLang) ? "rtl" : "ltr";
+  const out = await translateHtml(
+    { title: art.title, html: art.content, targetLang },
+    { apiKey: settings.openrouterKey, model: settings.openrouterModel }
+  );
   return {
     ...art,
-    title: data.title || art.title,
-    content: data.html || art.content,
-    dir: newDir,
-    lang: data.lang || (targetLang === "Arabic" ? "ar" : art.lang),
+    title: out.title || art.title,
+    content: out.html || art.content,
+    dir: out.dir || art.dir,
+    lang: out.lang || art.lang,
   };
 }
 
@@ -140,37 +152,62 @@ async function prepareArticle() {
   return { art, blob };
 }
 
+async function blobToBase64(blob) {
+  const buf = new Uint8Array(await blob.arrayBuffer());
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < buf.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, buf.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+async function sendViaKindle(art, blob) {
+  setStatus("working", '<span class="spinner"></span>جارٍ الإرسال إلى كندل…');
+  const epubBase64 = await blobToBase64(blob);
+  const resp = await fetch(backend() + "/stk/send", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      epubBase64,
+      title: art.title,
+      author: art.byline || art.siteName || "",
+    }),
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok || !data.ok) throw new Error(data.error || `فشل الإرسال (${resp.status})`);
+  setStatus("ok", "تم الإرسال إلى مكتبة كندل. سيظهر على جهازك خلال دقائق.");
+}
+
+async function sendViaEmail(art, blob) {
+  setStatus("working", '<span class="spinner"></span>جارٍ الإرسال إلى كندل…');
+  const epubBase64 = await blobToBase64(blob);
+  const filename = sanitizeFilename(art.title) + ".epub";
+  const resp = await fetch(backend() + "/send", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ kindleEmail: settings.kindleEmail, filename, title: art.title, epubBase64 }),
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok || !data.ok) throw new Error(data.error || `فشل الإرسال (${resp.status})`);
+  setStatus(
+    "ok",
+    `تم الإرسال إلى <b>${settings.kindleEmail}</b>. سيظهر خلال دقائق — تأكد من اعتماد المُرسِل في أمازون (انظر الإعدادات).`
+  );
+}
+
 async function onSend() {
   if (!article) return;
-  if (!settings.kindleEmail) {
-    setStatus("err", "حدِّد بريد كندل في الإعدادات أولًا.");
+  if (!delivery.mode) {
+    setStatus("err", "لا توجد وجهة إرسال بعد — اربط حساب كندل من الإعدادات، أو نزّل الملف.");
     return;
   }
   els.sendBtn.disabled = true;
   els.downloadBtn.disabled = true;
   try {
     const { art, blob } = await prepareArticle();
-    setStatus("working", '<span class="spinner"></span>جارٍ الإرسال إلى كندل…');
-    const epubBase64 = await blobToBase64(blob);
-    const filename = sanitizeFilename(art.title) + ".epub";
-    const resp = await fetch(settings.backendUrl.replace(/\/$/, "") + "/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        kindleEmail: settings.kindleEmail,
-        filename,
-        title: art.title,
-        epubBase64,
-      }),
-    });
-    const data = await resp.json().catch(() => ({}));
-    if (!resp.ok || !data.ok) {
-      throw new Error(data.error || `Send failed (${resp.status})`);
-    }
-    setStatus(
-      "ok",
-      `تم الإرسال إلى <b>${settings.kindleEmail}</b>. سيظهر على كندل خلال دقائق — تأكد من أن عنوان المُرسِل ضمن قائمة أمازون المعتمدة (انظر الإعدادات).`
-    );
+    if (delivery.mode === "kindle") await sendViaKindle(art, blob);
+    else await sendViaEmail(art, blob);
   } catch (e) {
     setStatus("err", e.message);
   } finally {
@@ -200,17 +237,6 @@ async function onDownload() {
   }
 }
 
-async function blobToBase64(blob) {
-  const buf = new Uint8Array(await blob.arrayBuffer());
-  let binary = "";
-  const chunk = 0x8000;
-  for (let i = 0; i < buf.length; i += chunk) {
-    binary += String.fromCharCode.apply(null, buf.subarray(i, i + chunk));
-  }
-  return btoa(binary);
-}
-
-// Wire up
 els.translateToggle.addEventListener("change", () => {
   els.translateOptions.classList.toggle("hidden", !els.translateToggle.checked);
   clearStatus();
@@ -221,5 +247,5 @@ els.downloadBtn.addEventListener("click", onDownload);
 
 (async function init() {
   await loadSettings();
-  await extractCurrentArticle();
+  await Promise.all([extractCurrentArticle(), detectDelivery()]);
 })();

@@ -19,45 +19,29 @@
     </header>
 
     <section class="panel">
-      <h2>١. بريد كندل الخاص بك</h2>
+      <h2>ربط حساب كندل</h2>
       <p class="hint">
-        العنوان المنتهي بـ <code>@kindle.com</code>. تجده في أمازون ضمن
-        <em>إدارة المحتوى والأجهزة</em> ← <em>التفضيلات</em> ←
-        <em>إعدادات المستندات الشخصية</em>.
+        الطريقة الموصى بها: تسجّل الدخول في أمازون مرّة واحدة، فتصل مقالاتك مباشرةً
+        إلى مكتبة كندل — بلا بريد ولا قائمة اعتماد. لا نطّلع على حسابك؛ الربط يتم
+        عبر خدمة التوصيل الخاصّة بك.
       </p>
-      <input id="kindleEmail" type="email" dir="ltr" placeholder="yourname_1a2b3c@kindle.com" />
-    </section>
-
-    <section class="panel">
-      <h2>٢. خدمة الإرسال</h2>
-      <p class="hint">
-        عنوان برنامج الإرسال الصغير الذي يبعث ملف EPUB إلى كندل. الافتراضي خادم
-        محلي على جهازك؛ يمكن تغييره لاحقًا إلى خادمك الدائم (VPS).
-      </p>
-      <input id="backendUrl" type="url" dir="ltr" placeholder="http://localhost:8787" />
-    </section>
-
-    <section class="panel important">
-      <div class="panel-head">
-        <span class="warn-dot" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 9v4" /><path d="M12 17h.01" />
-            <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
-          </svg>
-        </span>
-        <h2>٣. اعتماد المُرسِل (مرة واحدة، لازمة)</h2>
+      <div id="kindleStatus" class="account-status disconnected">غير مربوط</div>
+      <div id="devicesList" class="devices"></div>
+      <div class="actions">
+        <button id="connectBtn" class="btn primary">ربط حساب كندل</button>
+        <button id="disconnectBtn" class="btn ghost hidden">إلغاء الربط</button>
       </div>
-      <p class="hint">
-        أمازون تتجاهل بصمت أي مستند من عنوان لم تعتمده مسبقًا. في صفحة
-        <em>إعدادات المستندات الشخصية</em> نفسها، تحت
-        <strong>قائمة البريد المعتمد للمستندات الشخصية</strong>، أضِف العنوان الذي
-        ترسل منه خدمتك. إن لم تفعل، سيبدو الإرسال ناجحًا لكن لا شيء يصل.
-      </p>
     </section>
 
     <section class="panel">
-      <h2>٤. تفضيلات الترجمة</h2>
-      <label class="switch-row">
+      <h2>الترجمة (اختيارية)</h2>
+      <p class="hint">
+        لتفعيل الترجمة بالذكاء الاصطناعي، أدخِل مفتاح OpenRouter الخاص بك من
+        <code>openrouter.ai/keys</code>. يُحفظ محلّيًّا في متصفّحك فقط، ويُرسَل نصّ
+        المقال مباشرةً إلى OpenRouter عند الترجمة.
+      </p>
+      <input id="openrouterKey" type="password" dir="ltr" placeholder="sk-or-..." autocomplete="off" />
+      <label class="switch-row" style="margin-top:14px">
         <span class="switch-label">تفعيل «الترجمة قبل الإرسال» افتراضيًا</span>
         <span class="switch">
           <input type="checkbox" id="translateByDefault" />
@@ -76,9 +60,30 @@
       </label>
     </section>
 
+    <section class="panel">
+      <h2>خدمة التوصيل</h2>
+      <p class="hint">
+        عنوان خدمة التوصيل الخاصّة بك. الافتراضي خادم محلي على جهازك؛ غيِّره إلى
+        عنوان خادمك الدائم (VPS) للعمل بلا تشغيل الحاسوب.
+      </p>
+      <input id="backendUrl" type="url" dir="ltr" placeholder="http://localhost:8787" />
+    </section>
+
+    <details class="panel fallback">
+      <summary>طريقة بديلة: الإرسال بالبريد</summary>
+      <p class="hint">
+        بديل لمن لا يريد ربط حسابه. يتطلّب إعداد بريد كندل واعتماد المُرسِل في
+        أمازون (قائمة البريد المعتمد للمستندات الشخصية) — خطوة تفرضها أمازون على
+        كل إرسال بالبريد.
+      </p>
+      <input id="kindleEmail" type="email" dir="ltr" placeholder="yourname_1a2b3c@kindle.com" />
+      <div class="actions" style="margin-top:12px">
+        <button id="testBtn" class="btn ghost">إرسال مستند تجريبي</button>
+      </div>
+    </details>
+
     <div class="actions">
-      <button id="saveBtn" class="btn primary">حفظ</button>
-      <button id="testBtn" class="btn ghost">إرسال مستند تجريبي</button>
+      <button id="saveBtn" class="btn primary">حفظ الإعدادات</button>
     </div>
     <div id="status" class="status hidden"></div>
   </div>

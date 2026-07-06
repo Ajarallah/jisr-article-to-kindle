@@ -65,6 +65,13 @@ Each entry: **what** was decided, **why**, and the **precedent** it was based on
 - **Why:** Eliminates our infrastructure entirely for the core product, zero hosting cost, and keeps the privacy story clean — nothing we operate sits between the user and Amazon/OpenRouter. Translation is an opt-in advanced feature, so a BYO-key requirement is acceptable friction confined to that feature; the core send-to-Kindle stays a single click.
 - **Precedent:** The owner's "OpenRouter-first, never the env Gemini key" rule ([[feedback_external_llm_openrouter]]) and the "minimum viable, no premature infrastructure" discipline. BYO-key mirrors how many indie reader tools ship optional AI features.
 
+## D9/D10 — Revision after protocol research (feasibility-driven)
+
+- **What changed:** Deep research into the two working reference clients (`stkclient` Python, `Xetera/kindle-api` JS) showed that running the Send-to-Kindle protocol *inside the browser extension* faces two blockers I could not clear blind: (1) Amazon's private device endpoints (`api.amazon.com`, `firs-ta-g7g.amazon.com`, `stkservice.amazon.com`) are very unlikely to return CORS headers for an extension origin, and the required `X-ADP-*` custom headers trigger preflight; (2) the request signature uses a **non-standard raw-digest PKCS#1 padding (no DigestInfo prefix)** that `crypto.subtle.sign` cannot produce.
+- **Decision:** Implement the STK OAuth + registration + signed upload **server-side** (Node), which is the reference client's native environment — no CORS, and `node:crypto` can produce the exact non-standard signature via `privateEncrypt` with `RSA_NO_PADDING` over a hand-built PKCS#1 block. The extension stays thin: build the EPUB, then hand it to the server, which relays to Amazon. This runs on the owner's own VPS, so content still never touches a third party, and the **user experience is unchanged** (sign in to Amazon once, no approved-sender, no email).
+- **Honesty note:** Two items remain unverifiable without a live Amazon login and were left for a one-time smoke test: whether Amazon accepts the reproduced signature, and whether it accepts `inputFormat=epub` (source hard-codes `outputFormat=MOBI`). The **verified email path is retained as a working fallback** so the product is never left without a delivery method.
+- **Precedent:** Owner's "verify the real mechanism, don't assume" instruction, and "isolated, reversible, keep a fallback" engineering discipline.
+
 ---
 
 ### Money / external-commitment ledger (for the final review)
