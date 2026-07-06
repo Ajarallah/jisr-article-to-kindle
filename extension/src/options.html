@@ -19,26 +19,28 @@
     </header>
 
     <section class="panel">
-      <h2>ربط حساب كندل</h2>
+      <h2>التوصيل إلى كندل</h2>
       <p class="hint">
-        الطريقة الموصى بها: تسجّل الدخول في أمازون مرّة واحدة، فتصل مقالاتك مباشرةً
-        إلى مكتبة كندل — بلا بريد ولا قائمة اعتماد. لا نطّلع على حسابك؛ الربط يتم
-        عبر خدمة التوصيل الخاصّة بك.
+        الإرسال يتمّ عبر <strong>تسجيل دخولك في أمازون</strong> في هذا المتصفّح —
+        لا حاجة لأيّ ربط ولا بريد ولا اعتماد مُرسِل. تأكّد فقط أنّك مسجّل الدخول في
+        <code>amazon.com</code>، والملفّ يذهب إلى مكتبة كندل مباشرةً.
       </p>
-      <div id="kindleStatus" class="account-status disconnected">غير مربوط</div>
-      <div id="devicesList" class="devices"></div>
       <div class="actions">
-        <button id="connectBtn" class="btn primary">ربط حساب كندل</button>
-        <button id="disconnectBtn" class="btn ghost hidden">إلغاء الربط</button>
+        <button id="openAmazonBtn" class="btn ghost">افتح أمازون لتسجيل الدخول</button>
       </div>
+      <details class="fallback" style="margin-top:14px">
+        <summary>إعداد متقدّم: نطاق أمازون</summary>
+        <p class="hint">غيّره فقط إذا كان حساب كندلك على نطاق آخر (الافتراضي مناسب لأغلب الحسابات).</p>
+        <input id="amazonDomain" type="url" dir="ltr" placeholder="https://www.amazon.com" />
+      </details>
     </section>
 
     <section class="panel">
       <h2>الترجمة (اختيارية)</h2>
       <p class="hint">
-        لتفعيل الترجمة بالذكاء الاصطناعي، أدخِل مفتاح OpenRouter الخاص بك من
-        <code>openrouter.ai/keys</code>. يُحفظ محلّيًّا في متصفّحك فقط، ويُرسَل نصّ
-        المقال مباشرةً إلى OpenRouter عند الترجمة.
+        لتفعيل الترجمة بالذكاء الاصطناعي، أدخِل مفتاح OpenRouter من
+        <code>openrouter.ai/keys</code>. يُحفظ محلّيًّا في متصفّحك، ويُرسَل نصّ المقال
+        مباشرةً إلى OpenRouter عند الترجمة فقط.
       </p>
       <input id="openrouterKey" type="password" dir="ltr" placeholder="sk-or-..." autocomplete="off" />
       <label class="switch-row" style="margin-top:14px">
@@ -59,28 +61,6 @@
         </select>
       </label>
     </section>
-
-    <section class="panel">
-      <h2>خدمة التوصيل</h2>
-      <p class="hint">
-        عنوان خدمة التوصيل الخاصّة بك. الافتراضي خادم محلي على جهازك؛ غيِّره إلى
-        عنوان خادمك الدائم (VPS) للعمل بلا تشغيل الحاسوب.
-      </p>
-      <input id="backendUrl" type="url" dir="ltr" placeholder="http://localhost:8787" />
-    </section>
-
-    <details class="panel fallback">
-      <summary>طريقة بديلة: الإرسال بالبريد</summary>
-      <p class="hint">
-        بديل لمن لا يريد ربط حسابه. يتطلّب إعداد بريد كندل واعتماد المُرسِل في
-        أمازون (قائمة البريد المعتمد للمستندات الشخصية) — خطوة تفرضها أمازون على
-        كل إرسال بالبريد.
-      </p>
-      <input id="kindleEmail" type="email" dir="ltr" placeholder="yourname_1a2b3c@kindle.com" />
-      <div class="actions" style="margin-top:12px">
-        <button id="testBtn" class="btn ghost">إرسال مستند تجريبي</button>
-      </div>
-    </details>
 
     <div class="actions">
       <button id="saveBtn" class="btn primary">حفظ الإعدادات</button>

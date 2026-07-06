@@ -3,10 +3,10 @@
   "name": "المقال إلى كندل",
   "version": "0.1.0",
   "description": "حوِّل المقال الذي تقرأه إلى ملف EPUB نظيف وأرسله إلى كندل، مع ترجمة اختيارية بالذكاء الاصطناعي.",
-  "permissions": ["activeTab", "scripting", "storage", "tabs"],
+  "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": [
-    "http://localhost:8787/*",
     "https://www.amazon.com/*",
+    "https://*.amazonaws.com/*",
     "https://openrouter.ai/*"
   ],
   "optional_host_permissions": ["https://*/*"],

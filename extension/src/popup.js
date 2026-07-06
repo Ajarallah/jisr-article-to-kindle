@@ -1,5 +1,6 @@
 import { buildEpub } from "./epub.js";
 import { translateHtml } from "./translate.js";
+import { sendEpubToKindle, isSignedIn } from "./deliver.js";
 
 const els = {
   title: document.getElementById("articleTitle"),
@@ -16,11 +17,9 @@ const els = {
 
 let article = null;
 let settings = null;
-let delivery = { mode: null }; // "kindle" | "email" | null
 
 const DEFAULT_SETTINGS = {
-  backendUrl: "http://localhost:8787",
-  kindleEmail: "",
+  amazonDomain: "https://www.amazon.com",
   translateByDefault: false,
   defaultTargetLang: "Arabic",
   openrouterKey: "",
@@ -36,18 +35,14 @@ function clearStatus() {
   els.status.classList.add("hidden");
 }
 
-function backend() {
-  return (settings.backendUrl || "").replace(/\/$/, "");
-}
-
 function sanitizeFilename(name) {
   return (
-    (name || "article")
-      .replace(/[\\/:*?"<>|]+/g, " ")
-      .replace(/\s+/g, " ")
-      .trim()
-      .slice(0, 80) || "article"
+    (name || "article").replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 80) || "article"
   );
+}
+
+function openAmazonLogin() {
+  chrome.tabs.create({ url: settings.amazonDomain || "https://www.amazon.com" });
 }
 
 async function loadSettings() {
@@ -58,36 +53,16 @@ async function loadSettings() {
   if (settings.defaultTargetLang) els.targetLang.value = settings.defaultTargetLang;
 }
 
-// Decide how this send will be delivered, cheaply (no Amazon round-trip).
-async function detectDelivery() {
-  try {
-    const resp = await fetch(backend() + "/health", { signal: AbortSignal.timeout(4000) });
-    const h = await resp.json();
-    if (h.kindleConnected) {
-      delivery = { mode: "kindle" };
-      els.deliveryInfo.textContent = "حساب كندل ✓";
-    } else if (h.smtpConfigured && settings.kindleEmail) {
-      delivery = { mode: "email" };
-      els.deliveryInfo.textContent = settings.kindleEmail;
-    } else {
-      delivery = { mode: null };
-      els.deliveryInfo.innerHTML = '<a href="#" id="openSettingsLink">اربط حساب كندل ←</a>';
-      wireSettingsLink();
-    }
-  } catch (e) {
-    delivery = { mode: null };
-    els.deliveryInfo.innerHTML = '<a href="#" id="openSettingsLink">شغّل خدمة التوصيل ←</a>';
-    wireSettingsLink();
-  }
-}
-
-function wireSettingsLink() {
-  const link = document.getElementById("openSettingsLink");
-  if (link) {
-    link.addEventListener("click", (e) => {
-      e.preventDefault();
-      chrome.runtime.openOptionsPage();
-    });
+// Show whether the user is signed in to Amazon (delivery is via their session).
+async function refreshDeliveryInfo() {
+  els.deliveryInfo.textContent = "…";
+  const ok = await isSignedIn(settings.amazonDomain);
+  if (ok) {
+    els.deliveryInfo.textContent = "حساب أمازون ✓";
+  } else {
+    els.deliveryInfo.innerHTML = '<a href="#" id="amazonLoginLink">سجّل الدخول في أمازون ←</a>';
+    const link = document.getElementById("amazonLoginLink");
+    if (link) link.addEventListener("click", (e) => { e.preventDefault(); openAmazonLogin(); });
   }
 }
 
@@ -125,20 +100,12 @@ async function extractCurrentArticle() {
 }
 
 async function translateArticle(art, targetLang) {
-  if (!settings.openrouterKey) {
-    throw new Error("أضف مفتاح OpenRouter في الإعدادات لتفعيل الترجمة.");
-  }
+  if (!settings.openrouterKey) throw new Error("أضف مفتاح OpenRouter في الإعدادات لتفعيل الترجمة.");
   const out = await translateHtml(
     { title: art.title, html: art.content, targetLang },
     { apiKey: settings.openrouterKey, model: settings.openrouterModel }
   );
-  return {
-    ...art,
-    title: out.title || art.title,
-    content: out.html || art.content,
-    dir: out.dir || art.dir,
-    lang: out.lang || art.lang,
-  };
+  return { ...art, title: out.title || art.title, content: out.html || art.content, dir: out.dir || art.dir, lang: out.lang || art.lang };
 }
 
 async function prepareArticle() {
@@ -152,64 +119,33 @@ async function prepareArticle() {
   return { art, blob };
 }
 
-async function blobToBase64(blob) {
-  const buf = new Uint8Array(await blob.arrayBuffer());
-  let binary = "";
-  const chunk = 0x8000;
-  for (let i = 0; i < buf.length; i += chunk) {
-    binary += String.fromCharCode.apply(null, buf.subarray(i, i + chunk));
-  }
-  return btoa(binary);
-}
-
-async function sendViaKindle(art, blob) {
-  setStatus("working", '<span class="spinner"></span>جارٍ الإرسال إلى كندل…');
-  const epubBase64 = await blobToBase64(blob);
-  const resp = await fetch(backend() + "/stk/send", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      epubBase64,
-      title: art.title,
-      author: art.byline || art.siteName || "",
-    }),
-  });
-  const data = await resp.json().catch(() => ({}));
-  if (!resp.ok || !data.ok) throw new Error(data.error || `فشل الإرسال (${resp.status})`);
-  setStatus("ok", "تم الإرسال إلى مكتبة كندل. سيظهر على جهازك خلال دقائق.");
-}
-
-async function sendViaEmail(art, blob) {
-  setStatus("working", '<span class="spinner"></span>جارٍ الإرسال إلى كندل…');
-  const epubBase64 = await blobToBase64(blob);
-  const filename = sanitizeFilename(art.title) + ".epub";
-  const resp = await fetch(backend() + "/send", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ kindleEmail: settings.kindleEmail, filename, title: art.title, epubBase64 }),
-  });
-  const data = await resp.json().catch(() => ({}));
-  if (!resp.ok || !data.ok) throw new Error(data.error || `فشل الإرسال (${resp.status})`);
-  setStatus(
-    "ok",
-    `تم الإرسال إلى <b>${settings.kindleEmail}</b>. سيظهر خلال دقائق — تأكد من اعتماد المُرسِل في أمازون (انظر الإعدادات).`
-  );
-}
-
 async function onSend() {
   if (!article) return;
-  if (!delivery.mode) {
-    setStatus("err", "لا توجد وجهة إرسال بعد — اربط حساب كندل من الإعدادات، أو نزّل الملف.");
-    return;
-  }
   els.sendBtn.disabled = true;
   els.downloadBtn.disabled = true;
   try {
     const { art, blob } = await prepareArticle();
-    if (delivery.mode === "kindle") await sendViaKindle(art, blob);
-    else await sendViaEmail(art, blob);
+    setStatus("working", '<span class="spinner"></span>جارٍ الإرسال إلى كندل…');
+    await sendEpubToKindle({
+      blob,
+      title: art.title,
+      author: art.byline || art.siteName || "",
+      domain: settings.amazonDomain,
+    });
+    setStatus("ok", "تم الإرسال إلى مكتبة كندل. سيظهر على جهازك خلال دقائق.");
+    refreshDeliveryInfo();
   } catch (e) {
-    setStatus("err", e.message);
+    const msg = e.message || String(e);
+    if (/سجّل الدخول|مسجّل/.test(msg)) {
+      setStatus(
+        "err",
+        'لست مسجّلًا دخولك في أمازون. <a href="#" id="loginNow">افتح amazon.com وسجّل الدخول</a> ثم أعد المحاولة.'
+      );
+      const l = document.getElementById("loginNow");
+      if (l) l.addEventListener("click", (ev) => { ev.preventDefault(); openAmazonLogin(); });
+    } else {
+      setStatus("err", msg);
+    }
   } finally {
     els.sendBtn.disabled = false;
     els.downloadBtn.disabled = false;
@@ -247,5 +183,5 @@ els.downloadBtn.addEventListener("click", onDownload);
 
 (async function init() {
   await loadSettings();
-  await Promise.all([extractCurrentArticle(), detectDelivery()]);
+  await Promise.all([extractCurrentArticle(), refreshDeliveryInfo()]);
 })();
