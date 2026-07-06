@@ -49,19 +49,36 @@ async function postJson(b, path, token, body) {
     const t = await resp.text().catch(() => "");
     throw new Error(`${path} فشل (${resp.status}). ${t.slice(0, 120)}`);
   }
+  // When the session is not authenticated, Amazon returns an HTML page (200)
+  // instead of JSON. Detect that and surface a clear sign-in message.
+  const ct = resp.headers.get("content-type") || "";
+  if (!ct.includes("application/json")) {
+    throw new Error("لست مسجّلًا دخولك في أمازون. افتح amazon.com وسجّل الدخول ثم أعد المحاولة.");
+  }
   return resp.json();
 }
 
 /*
- * Cheap login check: one GET to /empty. True if the user is signed in to Amazon.
+ * Real auth check via /extension/checkAuth (matches the official extension).
+ * A CSRF token exists on /empty even when logged out, so token presence is NOT
+ * a login signal — checkAuth returns { isAuthed, guid }. Verified live and
+ * against official S2K v2.1.1.7 source.
  */
-export async function isSignedIn(domain) {
+export async function checkAuth(domain) {
   try {
-    await getCsrf(base(domain));
-    return true;
+    const resp = await fetch(base(domain) + "/extension/checkAuth", { credentials: "include" });
+    if (!resp.ok) return { isAuthed: false };
+    const ct = resp.headers.get("content-type") || "";
+    if (!ct.includes("application/json")) return { isAuthed: false };
+    const data = await resp.json();
+    return { isAuthed: !!data.isAuthed, guid: data.guid };
   } catch {
-    return false;
+    return { isAuthed: false };
   }
+}
+
+export async function isSignedIn(domain) {
+  return (await checkAuth(domain)).isAuthed;
 }
 
 /*
@@ -115,7 +132,9 @@ export async function sendEpubToKindle({ blob, title, author, domain, archive = 
     inputFormat: "epub",
     stkToken: init.stkToken,
     title: safeTitle,
-    dataType: "epub",
+    // dataType is the MIME type (STK_DATA_TYPE.EPUB in the official extension),
+    // NOT the extension. Verified against official S2K v2.1.1.7 source.
+    dataType: "application/epub+zip",
     archive,
     deviceList: archive ? [] : deviceList,
     fileSize,
