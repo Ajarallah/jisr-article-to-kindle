@@ -1,119 +1,153 @@
 # Article to Kindle
 
-A Chrome extension that turns the article you are reading into a clean **EPUB**
-and sends it to your Kindle — with proper **Arabic / right-to-left** support and
-optional **AI translation**.
+Turn any article you're reading into a clean **EPUB** and send it straight to your
+Kindle — in one click, from a **single browser extension**. First-class
+**Arabic / right‑to‑left** support and optional **AI translation** are built in.
 
-The headline: delivery uses **Amazon's own "Send to Kindle"** (your Amazon
-account, authorized once) — so there is **no email setup and no "approved
-sender" step**, unlike every email-based competitor.
+No email. No "approved sender" list. No companion app. No server. It works the
+same way Amazon's own *Send to Kindle* extension does: through the Amazon account
+you're already signed into.
 
-## Two parts
+---
 
-1. **The extension** (`extension/`) — reads the article, builds the EPUB in your
-   browser (with translation + Arabic RTL), and hands it to the delivery service.
-2. **The delivery service** (`server/`) — a small program that talks to Amazon's
-   Send-to-Kindle API on your behalf (it holds your one-time Amazon
-   authorization). Runs on your own machine or your VPS, so your data stays
-   yours. It also offers an email fallback.
+## Why this exists
 
-> Why a service at all? Amazon's Send-to-Kindle API needs a non-standard request
-> signature and endpoints that a browser cannot call directly (CORS). The service
-> is the small, private piece that does that. See `docs/DECISIONS.md` (D9).
+Every "send to Kindle" tool falls into one of two camps:
 
-## Quick start (local test)
+- **Email-based** (Push to Kindle, Instapaper, KTool, Readwise): you must add an
+  approved sender address in Amazon, configure email, and your article passes
+  through a third‑party server. Fiddly, and not private.
+- **Amazon's official extension**: clean and serverless — but it doesn't do clean
+  Arabic (RTL) rendering, and it can't translate.
 
-```bash
-# 1) start the delivery service
-cd server
-npm install
-npm start          # → http://localhost:8787
-```
+Article to Kindle takes the **clean, serverless delivery** of Amazon's own
+extension and adds the two things it lacks: **proper Arabic** and **AI
+translation**.
 
-```
-# 2) load the extension
-#    chrome://extensions → Developer mode → Load unpacked → choose extension/
-```
+## Features
 
-```
-# 3) connect your Kindle (once)
-#    Click the extension → gear (Settings) → "ربط حساب كندل" (Connect Kindle)
-#    → sign in to Amazon → it auto-connects and lists your devices.
-```
+- **One‑click send** to your Kindle library (syncs to every device + the Kindle app).
+- **Clean extraction** with Mozilla Readability — works on paywalled / logged‑in
+  pages you can already read, because it reads the rendered page in your browser.
+- **Clean EPUB3** output — not Amazon's lossy web capture.
+- **Arabic & RTL done right** — `page-progression-direction`, `dir="rtl"`, and an
+  **embedded Amiri font** so Arabic never renders as empty boxes on Kindle.
+- **Optional AI translation** before sending (English ⇄ Arabic and more), with a
+  literary Arabic style: فصحى وسطى, no tashkeel.
+- **Download EPUB** instead of sending, any time.
+- **Private by design** — see [Privacy](#privacy).
+
+## How it works
 
 ```
-# 4) send
-#    Open any article → click the icon → "إرسال إلى كندل" (Send to Kindle).
-#    Or "تنزيل EPUB" (Download EPUB) to just save the file.
+┌──────────────┐   Readability    ┌──────────────┐   your Amazon    ┌──────────────┐
+│  the article │ ───────────────▶ │  clean EPUB3 │ ───  session ──▶ │ Kindle library│
+│ (in browser) │   (+ translate)  │ (in browser) │  (cookies+CSRF)  │  (all devices)│
+└──────────────┘                  └──────────────┘                  └──────────────┘
 ```
 
-## Translation (optional, bring your own key)
+Delivery replicates Amazon's official *Send to Kindle* web flow, **verified
+byte‑for‑byte against the official extension's source (v2.1.1.7)**:
 
-Get an OpenRouter key at <https://openrouter.ai/keys>, paste it in Settings →
-Translation. Translation then runs **directly from your browser** to OpenRouter
-(the article text is sent only when you enable translation). Arabic output
-follows: فصحى وسطى, no tashkeel, no "بل".
+1. `GET /sendtokindle/empty` → scrape the anti‑CSRF token; `GET
+   /sendtokindle/extension/checkAuth` → confirm you're signed in.
+2. `POST /sendtokindle/init` → a pre‑signed S3 upload URL + an `stkToken`.
+3. `PUT` the EPUB bytes to S3.
+4. `POST /sendtokindle/send-v2` → Amazon converts and delivers to your library.
 
-## Email fallback
+All of this runs **inside the extension**, authenticated by the amazon.com session
+you're already logged into — exactly like Amazon's own extension. There is **no
+server** in the delivery path.
 
-If you prefer not to link your Amazon account, the service can email the EPUB to
-your `@kindle.com` address instead (Settings → "طريقة بديلة: الإرسال بالبريد").
-This path requires SMTP env vars in `server/.env` and Amazon's approved-sender
-step. See `server/.env.example`.
+## Install (developer mode)
 
-## Run the service on your VPS (no laptop needed)
-
-The service is stateless except for your Kindle credentials
-(`server/.stk-credentials.json`, git-ignored). Deploy `server/` to your VPS,
-run it under a process manager (pm2/systemd) behind HTTPS, then set the
-extension's "خدمة التوصيل" (Delivery service) URL to your domain. Add that
-domain when the extension asks for host permission.
-
-## Testing
-
-```bash
-cd server && npm test      # unit tests: STK signing + PKCE + code parsing
+```
+1. Clone this repo.
+2. Open your browser's extensions page (brave://extensions or chrome://extensions).
+3. Enable "Developer mode".
+4. "Load unpacked" → select the extension/ folder.
+5. Make sure you're signed in to Amazon in the same browser.
 ```
 
-The signing algorithm is verified self-consistently (the produced signature
-decrypts back to the exact SHA-256 digest). The live Amazon round-trip is
-verified by connecting your account once (step 3 above) and sending — see
-`SUMMARY.md` for what is verified vs. what needs your one-time sign-in.
+A packaged zip for the Web Store is produced by `scripts/package-extension.sh`.
+
+## Usage
+
+1. Open any article.
+2. Click the **المقال إلى كندل** toolbar icon.
+3. (Optional) toggle **translate** and pick a language.
+4. **إرسال إلى كندل** (Send to Kindle) — it appears on your Kindle in a minute or two.
+   Or **تنزيل EPUB** to just save the file.
+
+### Translation (bring your own key)
+
+Translation is optional and uses your own [OpenRouter](https://openrouter.ai/keys)
+key, stored locally in the browser. When enabled, the article text is sent
+directly from your browser to OpenRouter — never to us.
+
+## Privacy
+
+In normal use the extension talks to exactly two places, both yours:
+
+- **Amazon** — your own account, to deliver the file (same as Amazon's extension).
+- **OpenRouter** — only if you turn on translation, with your own key.
+
+No server operated by this project sits in the path. No analytics, no tracking, no
+telemetry, no accounts. Full policy: [`store/PRIVACY.md`](store/PRIVACY.md).
 
 ## Project layout
 
 ```
-extension/            Chrome extension (Manifest V3)
+extension/               the whole product — a Manifest V3 extension
   manifest.json
   src/
-    popup.*           toolbar UI + orchestration (send via Kindle account / email / download)
-    options.*         settings: connect Kindle, translation key, service URL, email fallback
-    extract.js        pulls the article out of the page (Readability)
-    epub.js           builds the EPUB3 in the browser (RTL + Arabic font)
-    translate.js      client-side structure-preserving translation (OpenRouter)
-  lib/                vendored: Readability, JSZip, Amiri font
-server/               delivery service (Node/Express)
-  src/
-    stk.js            Amazon Send-to-Kindle client (OAuth2 + signed upload)
-    server.js         HTTP endpoints
-    translate.js      email-path translation (legacy/optional)
-    mailer.js         email fallback (Nodemailer)
-  test/               unit tests
-docs/                 market research, architecture, decision log
-store/                privacy policy + Chrome Web Store listing
-SUMMARY.md            plain-language summary (Arabic)
+    popup.*              toolbar UI + orchestration
+    options.*            settings (Amazon domain, translation key, defaults)
+    extract.js           article extraction (Readability)
+    epub.js              clean EPUB3 builder (RTL + embedded Arabic font)
+    translate.js         client-side structure-preserving translation (OpenRouter)
+    deliver.js           Send-to-Kindle delivery (Amazon session; verified vs official)
+  lib/                   vendored: Readability, JSZip, Amiri font
+docs/                    research, architecture, decision log, competitive analysis
+store/                   privacy policy + Chrome Web Store listing
+scripts/                 packaging
+server/                  OPTIONAL / legacy — email fallback + an earlier OAuth
+                         delivery approach. Not needed for normal use (see DECISIONS D9–D11).
 ```
 
-## Privacy
+## Verification
 
-In the default path the extension talks only to your own delivery service (which
-talks only to your Amazon account) and, if you enable translation, to OpenRouter
-with your own key. No third-party server operated by the publisher, no analytics,
-no tracking. Full text: `store/PRIVACY.md`.
+- **EPUB pipeline** is unit‑tested headlessly (jsdom): a real Arabic article →
+  valid EPUB3 with correct RTL markers. Run: `cd server && npm test`.
+- **Delivery protocol** is verified byte‑for‑byte against the official *Send to
+  Kindle* extension source (endpoints, headers, field names, the
+  `application/epub+zip` data type, the auth model). See
+  [`docs/03-official-s2k-mechanism.md`](docs/03-official-s2k-mechanism.md).
+- **Live reachability** confirmed against a real Amazon session (CSRF scrape +
+  endpoint calls return 200). A full end‑to‑end send requires being signed in to
+  Amazon in the browser — the same requirement as Amazon's own extension.
 
-## Third-party components
+## Roadmap
 
-Mozilla Readability (Apache-2.0), JSZip (MIT/GPL), Amiri font (OFL-1.1). The STK
-flow is a port of the approach used by the open-source `stkclient` and
-`Xetera/kindle-api` projects; it uses Amazon's private API (see DECISIONS.md D9
-for the risk note).
+Parity ideas drawn from studying the official extension and competitors:
+
+- Preview‑before‑send.
+- Send history.
+- "Send selection" (send only highlighted text).
+- Target a specific device vs. the whole library.
+
+## Compatibility
+
+Any Chromium browser: **Brave**, Chrome, Edge, Arc. Requires being signed in to
+Amazon in that browser.
+
+## Legal / risk note
+
+Delivery uses Amazon's private *Send to Kindle* web endpoints — the same ones
+Amazon's own extension uses. These are undocumented and could change; see
+`docs/DECISIONS.md` (D9–D11) for the reasoning and fallbacks.
+
+## License
+
+[MIT](LICENSE) — third‑party components: Mozilla Readability (Apache‑2.0), JSZip
+(MIT/GPL), Amiri font (OFL‑1.1).

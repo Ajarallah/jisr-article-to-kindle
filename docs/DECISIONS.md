@@ -80,6 +80,17 @@ Each entry: **what** was decided, **why**, and the **precedent** it was based on
 - **Precedent:** The owner's own rules — "Tool Discovery / build ON TOP of existing infrastructure, don't rebuild from scratch" (which I violated by rebuilding delivery in D9) and "build the real user experience." This decision corrects that miss.
 - **Honesty note:** This is still Amazon's private (undocumented) web API; it can change. But it is materially lower-risk than D9 because it is the identical mechanism a shipping first-party extension depends on.
 
+## D12 — Delivery verified byte-for-byte against official source + live-checked
+
+- **What:** Read the official Send-to-Kindle extension's ACTUAL source from disk (v2.1.1.7 — `src-worker/s2k-request.js`, `send-to-kindle.js`, `src-common/constants.js`) via its bundled source maps, and reconciled `deliver.js` against it field by field.
+- **Corrections found and applied:**
+  - `/send-v2` `dataType` must be the **MIME type** `application/epub+zip` (`STK_DATA_TYPE.EPUB`), **not** `"epub"`. `inputFormat`/`fileExtension` stay `"epub"` (`STK_FILE_TYPE.EPUB`). The earlier value risked rejection.
+  - Auth detection must use `GET /sendtokindle/extension/checkAuth` → `{isAuthed, guid}`. A CSRF token is present on `/empty` **even when logged out**, so token presence is not a login signal (the earlier `isSignedIn` was wrong and would show "signed in" while logged out).
+  - When unauthenticated, Amazon returns an **HTML page (200)** instead of JSON; `postJson` now detects non-JSON and surfaces a clear sign-in message instead of a cryptic parse error.
+- **Confirmed identical to official:** base `/sendtokindle`, header `anti-csrftoken-a2z`, app name `chrome_ocs`, version `2.1.1.7`, the `/init` and `/send-v2` request bodies, the empty-`Content-Type` S3 `PUT`, and the CSRF-scrape regex. The official manifest declares **no declarativeNetRequest and no special headers** — plain credentialed fetch — so our extension-context calls match it exactly.
+- **Live verification (real Amazon session, read-only):** `/empty` CSRF scrape and endpoint reachability returned 200. A full end-to-end send could not be completed in this session only because the automatable browser was **not signed in to Amazon** (and entering the password is prohibited for the agent) — not a protocol issue. Byte-identical parity with a shipping first-party extension is the strongest correctness guarantee available short of a logged-in send.
+- **Precedent:** "Verify the real mechanism from source, don't assume"; the owner's demand for 100% certainty.
+
 ---
 
 ### Money / external-commitment ledger (for the final review)
