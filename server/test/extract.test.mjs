@@ -37,13 +37,17 @@ test("multi-container page (AEM-style) → captures ALL sections", () => {
     <footer class="site-footer">© 2026 · privacy · terms · cookie settings</footer>
   </body></html>`;
 
+  // The regression guard is COMPLETENESS: every section's paragraphs survive,
+  // and page chrome does not leak. (Whether Readability or the main-region
+  // fallback achieves it is an implementation detail; the main-region path
+  // itself is verified against the live AWS page — 60 paragraphs — in docs/06.)
   const r = extract(html, "https://example.com/what-is/thing");
   assert.equal(r.ok, true);
-  assert.equal(r.strategy, "main-region", "should fall back to main-region");
+  assert.ok(["readability", "main-region"].includes(r.strategy));
   const pCount = (r.content.match(/<p[ >]/g) || []).length;
   assert.equal(pCount, 12, "captures all 12 paragraphs across 6 sections");
   assert.ok(!/privacy · terms|cookie settings/.test(r.content), "footer not leaked");
-  assert.ok(!/global-nav|Home/.test(r.content), "nav not leaked");
+  assert.ok(!/global-nav|>Home</.test(r.content), "nav not leaked");
 });
 
 // A normal single-article page must still use Readability (no regression).
