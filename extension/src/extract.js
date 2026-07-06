@@ -12,12 +12,18 @@
  * Returns a structured-clone-safe object (no DOM nodes).
  */
 (function extractArticle() {
+  // Whole-document base direction. Arabic prose routinely embeds Latin technical
+  // terms, so a raw rtl>ltr count wrongly flips to LTR on term-heavy articles.
+  // Instead: RTL when a meaningful SHARE of letters are RTL. Inline English then
+  // renders correctly under an RTL base via the Unicode bidi algorithm.
   function detectDirection(text) {
     if (!text) return "ltr";
-    const sample = text.slice(0, 4000);
+    const sample = text.slice(0, 8000);
     const rtl = (sample.match(/[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿֐-׿]/g) || []).length;
-    const ltr = (sample.match(/[A-Za-z]/g) || []).length;
-    return rtl > ltr ? "rtl" : "ltr";
+    const latin = (sample.match(/[A-Za-z]/g) || []).length;
+    const total = rtl + latin;
+    if (total < 20) return "ltr";
+    return rtl / total >= 0.3 ? "rtl" : "ltr";
   }
 
   var CHROME_RE = /(^|[\s_-])(nav|navbar|header|footer|menu|sidebar|breadcrumb|cookie|consent|banner|masthead|social|share|related|promo|advert|subscrib|newsletter|comment|toc|pagination|disclaimer|legal|copyright)([\s_-]|$)/i;
@@ -119,7 +125,14 @@
     }
 
     var htmlLang = document.documentElement.getAttribute("lang") || (article && article.lang) || "";
-    var dir = document.documentElement.getAttribute("dir") || detectDirection(dirText);
+    // Content-based detection is authoritative (site dir attributes are often
+    // wrong or missing). Fall back to the declared dir only when the extracted
+    // text is too short to judge reliably.
+    var contentDir = detectDirection(dirText);
+    var dir =
+      (dirText || "").trim().length > 60
+        ? contentDir
+        : document.documentElement.getAttribute("dir") || contentDir;
 
     return {
       ok: true,

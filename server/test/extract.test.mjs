@@ -65,6 +65,24 @@ test("single-article blog → uses Readability, no chrome leak", () => {
   assert.ok(!/privacy · terms/.test(r.content), "footer not leaked");
 });
 
+// Mostly-Arabic prose with inline English technical terms → still RTL.
+test("mostly-Arabic with inline English terms → rtl", () => {
+  const p =
+    "<p>يستخدم النموذج آليّة الانتباه attention لمعالجة الرموز tokens بكفاءة عالية في هذا السياق التقني المعقد.</p>";
+  const html = `<html><body><article><h1>عنوان المقال التقني</h1>${p.repeat(6)}</article></body></html>`;
+  const r = extract(html, "https://example.com/ar-tech");
+  assert.equal(r.dir, "rtl");
+});
+
+// Mostly-English prose with a stray Arabic word → LTR.
+test("mostly-English with a few Arabic words → ltr", () => {
+  const p =
+    "<p>The transformer architecture reshaped NLP. The Arabic word ذكاء appears once, yet the prose is English throughout this whole paragraph and section.</p>";
+  const html = `<html><body><article><h1>Understanding Transformers</h1>${p.repeat(6)}</article></body></html>`;
+  const r = extract(html, "https://example.com/en-tech");
+  assert.equal(r.dir, "ltr");
+});
+
 // Arabic page → detected as RTL.
 test("Arabic content → dir rtl", () => {
   const paras = Array.from(
