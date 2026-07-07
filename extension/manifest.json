@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "المقال إلى كندل",
-  "version": "0.2.1",
-  "description": "حوِّل المقال الذي تقرأه إلى ملف EPUB نظيف وأرسله إلى كندل، مع ترجمة اختيارية بالذكاء الاصطناعي.",
+  "name": "جسر",
+  "version": "0.3.0",
+  "description": "جسر: حوِّل أيّ مقال أو ملفّ (md/docx) إلى كتاب كندل نظيف، بعربيّة سليمة وترجمة اختياريّة.",
   "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": [
     "https://www.amazon.com/*",
@@ -12,7 +12,7 @@
   ],
   "optional_host_permissions": ["https://*/*"],
   "action": {
-    "default_title": "المقال إلى كندل",
+    "default_title": "جسر",
     "default_popup": "src/popup.html",
     "default_icon": {
       "16": "icons/icon16.png",

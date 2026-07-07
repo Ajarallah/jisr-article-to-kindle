@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here.
 
+## [0.3.0] — 2026-07-07
+
+### Changed
+- **Rebrand to «جسر» (Jisr — "bridge").** New name, new toolbar icon (the brand
+  key art from image 2), and a new identity palette across the whole extension UI:
+  royal blue `#3644ED` with a lime `#AEF769` highlight accent (was teal). White-on-
+  blue contrast verified at 6.55:1 (AA). The «جسر» wordmark carries the brand's
+  signature lime highlighter in each header.
+
 ## [0.2.1] — 2026-07-07
 
 ### Added
