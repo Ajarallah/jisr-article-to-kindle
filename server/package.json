@@ -21,6 +21,7 @@
     "nodemailer": "^6.9.16"
   },
   "devDependencies": {
-    "jsdom": "^29.1.1"
+    "jsdom": "^29.1.1",
+    "sharp": "^0.35.3"
   }
 }
