@@ -53,11 +53,15 @@ language before reading on Kindle.
 ## Roadmap (prioritized)
 
 **P0 — shipped / verified**
-- One-click Amazon-session delivery (verified vs official source). ✅
+- One-click Amazon-session delivery — **verified live (sent and arrived on Kindle)**. ✅
 - Clean EPUB3 with RTL + embedded Amiri font. ✅
-- Optional AI translation (BYO OpenRouter key), structure-preserving. ✅
-- Download EPUB. ✅
-- Correct auth detection + clear sign-in prompts. ✅
+- Optional AI translation — **NVIDIA `glm-5.2`** (benchmarked winner) + fallback +
+  retry; structure-preserving, BYO key. ✅
+- **Robust two-strategy extraction** (Readability + main-region fallback) — fixes
+  AWS/AEM under-extraction (17 → 60 paragraphs). ✅
+- **Content-based whole-document direction** (Arabic-with-inline-English → RTL). ✅
+- **Drag & drop** Markdown / `.docx` → EPUB → Kindle. ✅
+- Download EPUB; correct auth detection + clear sign-in prompts. ✅
 
 **P1 — next (parity + polish)**
 - **Preview before send** — show the built EPUB (title, first page, direction) with

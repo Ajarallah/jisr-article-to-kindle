@@ -22,8 +22,10 @@ Unlike most "send to Kindle" tools, Article to Kindle:
   can already read are captured correctly — and your content stays private.
 • Renders Arabic and other right-to-left languages properly, with an embedded
   Arabic font so text is not broken into empty boxes on Kindle.
-• Optionally translates the article with AI before sending (bring your own
-  OpenRouter key).
+• Optionally translates the article with AI before sending (NVIDIA glm-5.2 by
+  default; bring your own key).
+• Also turns dropped Markdown (.md) or Word (.docx) files — e.g. a ChatGPT answer
+  you exported — into clean EPUBs on your Kindle.
 
 How it works:
 1. Connect your Kindle once (sign in to Amazon).
@@ -47,9 +49,13 @@ translation step.
   Readability) to build the EPUB. No background or automatic page access.
 - **storage** — Stores the user's settings and their Amazon authorization token
   locally in the browser. Nothing is sent to the developer.
-- **host access to amazon.com** — Required to upload the generated EPUB to the
+- **host access to amazon.com** — Required to deliver the generated EPUB to the
   user's Kindle library through Amazon's Send to Kindle service, authorized by
   the user's own Amazon sign-in.
+- **host access to \*.amazonaws.com** — Amazon's Send to Kindle returns a
+  pre-signed S3 upload URL; the EPUB bytes are uploaded (PUT) there.
+- **host access to integrate.api.nvidia.com** — Only when the user turns on AI
+  translation, the article text is sent to NVIDIA with the user's own key.
 - **No remote code** — all executable code is bundled in the package.
 
 ## Assets checklist (to produce before submitting)
