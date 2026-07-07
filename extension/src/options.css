@@ -14,8 +14,8 @@
   --warn-bg: #fffaeb;
   --warn-border: #fde79b;
   --warn-text: #93591b;
-  font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    "Noto Sans Arabic", "Helvetica Neue", Tahoma, Arial, sans-serif;
+  font-family: "IBM Plex Sans Arabic", "SF Pro Text", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", "Noto Sans Arabic", "Helvetica Neue", Tahoma, Arial, sans-serif;
 }
 * { box-sizing: border-box; }
 body {

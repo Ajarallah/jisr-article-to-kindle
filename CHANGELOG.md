@@ -10,6 +10,8 @@ All notable changes to this project are documented here.
   royal blue `#3644ED` with a lime `#AEF769` highlight accent (was teal). White-on-
   blue contrast verified at 6.55:1 (AA). The «جسر» wordmark carries the brand's
   signature lime highlighter in each header.
+- **UI font → IBM Plex Sans Arabic** (vendored woff2, OFL-1.1, weights 400/500/
+  600/700). Loaded via `src/fonts.css`; Latin terms fall back to the system stack.
 
 ## [0.2.1] — 2026-07-07
 
