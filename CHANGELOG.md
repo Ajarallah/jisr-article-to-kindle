@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here.
 
+## [0.2.1] — 2026-07-07
+
+### Added
+- **Preview before send** — a reader-style view of the built article (RTL-aware,
+  showing your translation) with Send / Download, before it goes to your Kindle.
+  Mirrors Amazon's "Preview and send". Opened from the popup. Content renders in a
+  sandboxed iframe (no script execution).
+
 ## [0.2.0] — 2026-07-07
 
 ### Added

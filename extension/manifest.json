@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "المقال إلى كندل",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "حوِّل المقال الذي تقرأه إلى ملف EPUB نظيف وأرسله إلى كندل، مع ترجمة اختيارية بالذكاء الاصطناعي.",
   "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": [

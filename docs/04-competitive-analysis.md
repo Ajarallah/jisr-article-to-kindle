@@ -61,11 +61,11 @@ language before reading on Kindle.
   AWS/AEM under-extraction (17 → 60 paragraphs). ✅
 - **Content-based whole-document direction** (Arabic-with-inline-English → RTL). ✅
 - **Drag & drop** Markdown / `.docx` → EPUB → Kindle. ✅
+- **Preview before send** — reader-view (RTL-aware) with confirm; great for
+  translation QA. ✅
 - Download EPUB; correct auth detection + clear sign-in prompts. ✅
 
 **P1 — next (parity + polish)**
-- **Preview before send** — show the built EPUB (title, first page, direction) with
-  a confirm. High value for translation QA.
 - **Send history** — local list of sent articles (chrome.storage).
 - **Multi-domain** — auto-pick the user's Amazon country domain (.com/.co.uk/.de/…),
   like the official extension.

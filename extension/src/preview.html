@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>معاينة قبل الإرسال — المقال إلى كندل</title>
+  <link rel="stylesheet" href="preview.css" />
+</head>
+<body>
+  <header class="bar">
+    <div class="bar-start">
+      <span class="brand-badge" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 5.5A2 2 0 0 1 5 3.5h5v16.5H5a2 2 0 0 0-2 2V5.5z" />
+          <path d="M21 5.5a2 2 0 0 0-2-2h-5v16.5h5a2 2 0 0 1 2 2V5.5z" />
+        </svg>
+      </span>
+      <span class="bar-title">معاينة قبل الإرسال</span>
+      <span id="dirBadge" class="dir-badge"></span>
+    </div>
+    <div class="bar-actions">
+      <button id="downloadBtn" class="btn ghost">تنزيل EPUB</button>
+      <button id="sendBtn" class="btn primary">إرسال إلى كندل</button>
+    </div>
+  </header>
+
+  <div id="status" class="status hidden"></div>
+
+  <main class="stage">
+    <iframe id="preview" title="معاينة المحتوى" sandbox=""></iframe>
+  </main>
+
+  <script type="module" src="preview.js"></script>
+</body>
+</html>

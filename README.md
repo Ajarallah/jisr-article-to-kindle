@@ -40,6 +40,8 @@ translation**.
   NVIDIA (`glm-5.2`), with a literary Arabic style: فصحى وسطى, no tashkeel.
 - **Drag & drop files** — drop a Markdown (`.md`) or Word (`.docx`) file (e.g. a
   ChatGPT answer you exported) and it becomes a clean EPUB on your Kindle.
+- **Preview before send** — see the built article (and your translation) in a
+  reader view before it goes to your Kindle.
 - **Download EPUB** instead of sending, any time.
 - **Private by design** — see [Privacy](#privacy).
 
@@ -86,7 +88,8 @@ A packaged zip for the Web Store is produced by `scripts/package-extension.sh`.
    Or **تنزيل EPUB** to just save the file.
 
 To send a **file** instead of a page, click *"أرسِل ملفًّا (md / docx)"* in the
-popup and drop your file.
+popup and drop your file. To review the article (and its translation) before it
+goes to your Kindle, click *"معاينة قبل الإرسال"*.
 
 ### Translation (bring your own key)
 

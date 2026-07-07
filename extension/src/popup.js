@@ -184,7 +184,39 @@ els.translateToggle.addEventListener("change", () => {
   els.translateOptions.classList.toggle("hidden", !els.translateToggle.checked);
   clearStatus();
 });
+async function onPreview() {
+  if (!article) return;
+  els.sendBtn.disabled = true;
+  els.downloadBtn.disabled = true;
+  try {
+    let art = article;
+    if (els.translateToggle.checked) {
+      setStatus("working", '<span class="spinner"></span>جارٍ الترجمة بالذكاء الاصطناعي…');
+      art = await translateArticle(article, els.targetLang.value);
+    }
+    await chrome.storage.local.set({
+      a2k_preview: {
+        title: art.title,
+        content: art.content,
+        dir: art.dir,
+        lang: art.lang,
+        author: art.byline || art.siteName || "",
+        domain: settings.amazonDomain,
+      },
+    });
+    clearStatus();
+    chrome.tabs.create({ url: chrome.runtime.getURL("src/preview.html") });
+  } catch (e) {
+    setStatus("err", e.message || String(e));
+  } finally {
+    els.sendBtn.disabled = false;
+    els.downloadBtn.disabled = false;
+  }
+}
+
 els.settingsBtn.addEventListener("click", () => chrome.runtime.openOptionsPage());
+const previewBtn = document.getElementById("previewBtn");
+if (previewBtn) previewBtn.addEventListener("click", onPreview);
 const fileBtn = document.getElementById("fileBtn");
 if (fileBtn) fileBtn.addEventListener("click", () => chrome.tabs.create({ url: chrome.runtime.getURL("src/drop.html") }));
 els.sendBtn.addEventListener("click", onSend);
