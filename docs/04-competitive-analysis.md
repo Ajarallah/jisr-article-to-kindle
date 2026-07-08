@@ -69,8 +69,10 @@ language before reading on Kindle.
 - **Send history** — local list of sent articles (chrome.storage).
 - **Multi-domain** — auto-pick the user's Amazon country domain (.com/.co.uk/.de/…),
   like the official extension.
-- **Better long-article + image handling audit** (already embeds images; verify
-  large files and lazy-loaded images).
+- **Image handling** — images are embedded only when their host is permission- or
+  CORS-reachable; wiring the optional all-sites permission to embed images
+  reliably is a pending task (see plans/README.md). Also audit large files and
+  lazy-loaded images.
 
 **P2 — differentiators**
 - **Send selection** — send only highlighted text (great for study/notes).
