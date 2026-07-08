@@ -18,7 +18,7 @@ Each entry: **what** was decided, **why**, and the **precedent** it was based on
 
 ## D3 — External LLM routed through OpenRouter (default Claude), key server-side
 
-- **What:** Translation calls go to OpenRouter; default model `anthropic/claude-3.5-sonnet`, swappable via `.env`. The API key lives only on the server, never in the extension.
+- **What:** Translation calls go to OpenRouter; default model `anthropic/claude-3.5-sonnet`, swappable via `.env`. The API key lives only on the server, never in the extension. (Provider later changed to NVIDIA — see D13.)
 - **Why:** OpenRouter keeps the model a swappable config (quality/cost A/B, failover). Claude leads on literary tone/register in translation benchmarks, fitting the Arabic-literary goal. Keeping the key server-side is a basic secret-hygiene requirement.
 - **Precedent:** The owner's **standing rule** recorded in memory — _"any external LLM backend → default to OpenRouter; never default to the Gemini key (present in env but non-functional)."_ Also mirrors the `paper-lab` / `book-translation` skills' OpenRouter-first pattern. **No paid account was created and no key was committed** — the path is built and left ready for the owner to add a key.
 
@@ -90,6 +90,13 @@ Each entry: **what** was decided, **why**, and the **precedent** it was based on
 - **Confirmed identical to official:** base `/sendtokindle`, header `anti-csrftoken-a2z`, app name `chrome_ocs`, version `2.1.1.7`, the `/init` and `/send-v2` request bodies, the empty-`Content-Type` S3 `PUT`, and the CSRF-scrape regex. The official manifest declares **no declarativeNetRequest and no special headers** — plain credentialed fetch — so our extension-context calls match it exactly.
 - **Live verification (real Amazon session, read-only):** `/empty` CSRF scrape and endpoint reachability returned 200. A full end-to-end send could not be completed in this session only because the automatable browser was **not signed in to Amazon** (and entering the password is prohibited for the agent) — not a protocol issue. Byte-identical parity with a shipping first-party extension is the strongest correctness guarantee available short of a logged-in send.
 - **Precedent:** "Verify the real mechanism from source, don't assume"; the owner's demand for 100% certainty.
+
+## D13 — Translation backend switched to NVIDIA NIM, default model `z-ai/glm-5.2`
+
+- **What:** The default translation backend changed from OpenRouter (`anthropic/claude-3.5-sonnet`) to **NVIDIA NIM** (OpenAI-compatible endpoint `https://integrate.api.nvidia.com/v1/chat/completions`), default model **`z-ai/glm-5.2`**, fallback **`deepseek-ai/deepseek-v4-pro`**, with per-model retry on transient free-tier failures. The key stays **client-side / BYO** — this part of D10 is unchanged. Supersedes the *provider* choice in D3 and the *OpenRouter* reference in D10; the client-side, BYO-key architecture of D10 otherwise stands.
+- **Why:** NVIDIA's free tier lets the owner run translation at zero cost with no paid account, and a five-model benchmark (see `docs/05-translation-model-selection.md`) put `glm-5.2` first on Arabic quality, speed, and instruction-compliance. Retry and fallback were added because the free tier intermittently rate-limits (503 ResourceExhausted / 429).
+- **Precedent:** The owner's standing "external LLM → default to OpenRouter, and never the env Gemini key" rule was the original basis for D3; this decision refines it toward a zero-cost free tier that still isn't the Gemini key, and is grounded in a real benchmark rather than assumption ("verify the real mechanism, don't assume"). See `docs/05-translation-model-selection.md` for the measured basis.
+- **Honesty note:** the free tier can rate-limit or change; the retry and `deepseek-v4-pro` fallback exist to absorb that, and the endpoint/model remain user-overridable in settings.
 
 ---
 
