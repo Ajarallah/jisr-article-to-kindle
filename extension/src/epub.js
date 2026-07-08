@@ -6,9 +6,13 @@
  *  - EPUB3 with a nav.xhtml + a legacy toc.ncx for older Kindle firmware.
  *  - RTL articles get page-progression-direction="rtl" and dir="rtl" so
  *    Arabic renders correctly on Kindle.
- *  - Images referenced in the article are fetched and embedded so the file
- *    is self-contained and readable offline. Images that fail to fetch are
- *    dropped rather than left as dead remote links.
+ *  - Images referenced in the article are fetched and embedded ONLY when the
+ *    image host is covered by an active host permission (or serves permissive
+ *    CORS). The extension does not currently request the optional all-sites
+ *    permission, so for most sites images cannot be fetched and are dropped —
+ *    the EPUB is text-only. Images that fail to fetch are dropped rather than
+ *    left as dead remote links. (Enabling embedding = wire chrome.permissions
+ *    .request for the declared optional_host_permissions; see plans/README.md.)
  */
 
 function uuidv4() {
