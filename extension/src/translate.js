@@ -19,7 +19,7 @@
 const DEFAULT_ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions";
 const DEFAULT_MODEL = "z-ai/glm-5.2";
 const DEFAULT_FALLBACK = "deepseek-ai/deepseek-v4-pro";
-const MAX_CHARS_PER_BATCH = 4000;
+const MAX_CHARS_PER_BATCH = 2500;
 const MAX_ATTEMPTS_PER_MODEL = 3;
 
 const RTL_LANGS = ["arabic", "hebrew", "persian", "urdu"];
@@ -71,7 +71,7 @@ async function complete(segments, targetLang, cfg, model) {
           { role: "user", content: JSON.stringify(segments) },
         ],
         temperature: 0.2,
-        max_tokens: 4096,
+        max_tokens: 8192,
       }),
     });
   } catch (e) {
