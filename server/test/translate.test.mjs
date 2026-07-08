@@ -124,3 +124,28 @@ test("persistent length mismatch throws after retries+fallback", async () => {
     /فشلت الترجمة/
   );
 });
+
+test("long article: splits into multiple batches, reassembles in order, asks for 8192 tokens", async () => {
+  // 8 paragraphs, each ~1200 chars → total ~9600 chars → forces several batches
+  // at the 2500-char cap.
+  const bodyText = (i) =>
+    `Paragraph ${i}. ` + "This is a long sentence used to inflate the segment length well past a few hundred characters so batching is exercised. ".repeat(9);
+  const paras = Array.from({ length: 8 }, (_, i) => `<p>${bodyText(i + 1)}</p>`).join("");
+
+  const maxTokensSeen = [];
+  const calls = installFetch((url, opts) => {
+    maxTokensSeen.push(JSON.parse(opts.body).max_tokens);
+    return ok(sentSegments(opts).map((s) => "AR:" + s));
+  });
+
+  const out = await translateHtml({ title: "T", html: paras, targetLang: "Arabic" }, CFG);
+
+  assert.ok(calls.n >= 2, "long input should span multiple batches");
+  assert.ok(maxTokensSeen.every((m) => m >= 8192), "each request asks for >= 8192 output tokens");
+  // reassembly: every paragraph translated, order preserved
+  for (let i = 1; i <= 8; i++) {
+    assert.match(out.html, new RegExp(`AR:Paragraph ${i}\\.`));
+  }
+  // order preserved: "Paragraph 1" appears before "Paragraph 2"
+  assert.ok(out.html.indexOf("AR:Paragraph 1.") < out.html.indexOf("AR:Paragraph 2."));
+});
