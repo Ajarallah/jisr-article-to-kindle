@@ -283,6 +283,7 @@ table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 0.95em
 th, td { border: 1px solid #ccc; padding: 0.4em 0.6em; text-align: start; vertical-align: top; }
 th { background: #f2f3f5; }
 a { color: inherit; text-decoration: underline; }
+[data-a2k-tr] { opacity: 0.9; margin-top: 0.15em; }
 .a2k-meta { color: #666; font-size: 0.9em; margin-bottom: 1.5em; }
 `;
 }
@@ -592,6 +593,7 @@ pre { white-space: pre-wrap; word-wrap: break-word; text-align: left; background
 table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 0.95em; }
 th, td { border: 1px solid #ccc; padding: 0.4em 0.6em; text-align: start; vertical-align: top; }
 a { color: inherit; text-decoration: underline; }
+[data-a2k-tr] { opacity: 0.9; margin-top: 0.15em; }
 .a2k-meta { color: #666; font-size: 0.9em; margin-bottom: 1.5em; }`;
 }
 

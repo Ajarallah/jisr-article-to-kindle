@@ -75,6 +75,7 @@ async function prepareArticle() {
         endpoint: settings.translationEndpoint,
       },
       {
+        bilingual: document.getElementById("bilingualToggle") && document.getElementById("bilingualToggle").checked,
         onProgress: (done, total) => {
           if (total > 1) {
             setStatus(

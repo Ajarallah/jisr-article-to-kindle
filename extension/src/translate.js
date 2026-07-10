@@ -172,14 +172,50 @@ function batchSegments(segments, maxChars) {
   return batches;
 }
 
+// Block elements we pair original↔translation on. Excludes pre/code (not
+// translated) and containers that hold other blocks (we interleave leaves only).
+const BILINGUAL_BLOCKS = "p, li, h1, h2, h3, h4, h5, h6, blockquote, figcaption, dd, dt";
+
+function leafTextBlocks(body) {
+  return Array.from(body.querySelectorAll(BILINGUAL_BLOCKS)).filter(
+    (el) => el.textContent.trim() && !el.querySelector(BILINGUAL_BLOCKS)
+  );
+}
+
+/*
+ * Interleave the translated blocks into the original document: after each source
+ * block, insert its translation with the target direction/lang. srcBody and
+ * transBody are structurally identical (translation only swapped text), so their
+ * leaf-block lists align 1:1. Marked data-a2k-tr (survives EPUB attribute
+ * stripping) for optional styling.
+ */
+function interleaveBilingual(srcBody, transBody, targetDir, targetLangCode) {
+  const src = leafTextBlocks(srcBody);
+  const trans = leafTextBlocks(transBody);
+  const n = Math.min(src.length, trans.length);
+  for (let i = 0; i < n; i++) {
+    const s = src[i];
+    const t = trans[i];
+    // Skip blocks the model left unchanged (e.g. all-Latin) — no point duplicating.
+    if ((s.textContent || "").trim() === (t.textContent || "").trim()) continue;
+    const imported = srcBody.ownerDocument.importNode(t, true);
+    imported.setAttribute("dir", targetDir);
+    if (targetLangCode) imported.setAttribute("lang", targetLangCode);
+    imported.setAttribute("data-a2k-tr", "1");
+    s.insertAdjacentElement("afterend", imported);
+  }
+}
+
 /*
  * translateHtml({ title, html, targetLang }, cfg, opts?) -> { title, html, lang, dir }
  * cfg:  { apiKey, model?, fallbackModel?, endpoint? }
- * opts: { signal?, onProgress?(doneBatches, totalBatches) }
+ * opts: { signal?, onProgress?(doneBatches, totalBatches), bilingual? }
+ *   bilingual: keep the original and interleave the translation after each block
+ *   (returns dir/lang undefined so the caller keeps the SOURCE direction).
  */
 export async function translateHtml({ title, html, targetLang }, cfg, opts = {}) {
   if (!cfg || !cfg.apiKey) throw new Error("أضف مفتاح الترجمة (NVIDIA) في الإعدادات لتفعيل الترجمة.");
-  const { signal, onProgress } = opts;
+  const { signal, onProgress, bilingual } = opts;
 
   const doc = new DOMParser().parseFromString(html, "text/html");
   const nodes = collectTextNodes(doc.body, doc);
@@ -230,6 +266,25 @@ export async function translateHtml({ title, html, targetLang }, cfg, opts = {})
   });
 
   const key = targetLang.toLowerCase();
+
+  if (bilingual) {
+    // Re-parse the untouched source and interleave the translated blocks (from
+    // `doc`, now fully translated) after each original block.
+    const srcDoc = new DOMParser().parseFromString(html, "text/html");
+    interleaveBilingual(
+      srcDoc.body,
+      doc.body,
+      RTL_LANGS.includes(key) ? "rtl" : "ltr",
+      LANG_CODES[key] || ""
+    );
+    return {
+      title: title, // keep the original title; both languages live in the body
+      html: srcDoc.body.innerHTML || html,
+      // dir/lang left undefined so the caller keeps the SOURCE direction/lang —
+      // the base flows as the original, translation blocks carry their own dir.
+    };
+  }
+
   return {
     title: newTitle || title,
     html: doc.body.innerHTML || html,

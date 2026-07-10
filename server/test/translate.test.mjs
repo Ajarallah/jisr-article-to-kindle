@@ -125,6 +125,30 @@ test("persistent length mismatch throws after retries+fallback", async () => {
   );
 });
 
+test("bilingual mode: keeps original and interleaves the translation per block", async () => {
+  installFetch((url, opts) => ok(sentSegments(opts).map((s) => "AR:" + s)));
+  const html = "<p>First sentence.</p><h2>A heading</h2><p>Second sentence.</p>";
+  const out = await translateHtml(
+    { title: "Doc", html, targetLang: "Arabic" },
+    CFG,
+    { bilingual: true }
+  );
+  // Original preserved.
+  assert.match(out.html, /First sentence\./);
+  assert.match(out.html, /Second sentence\./);
+  assert.match(out.html, /A heading/);
+  // Translation interleaved, marked, and RTL.
+  assert.match(out.html, /AR:First sentence\./);
+  assert.match(out.html, /data-a2k-tr="1"/);
+  assert.match(out.html, /dir="rtl"/);
+  // 3 source blocks → 3 translation blocks inserted.
+  assert.equal((out.html.match(/data-a2k-tr="1"/g) || []).length, 3);
+  // Base dir/lang left to the caller (source), not forced to the target.
+  assert.equal(out.dir, undefined);
+  // Original title kept (both languages live in the body).
+  assert.equal(out.title, "Doc");
+});
+
 test("structural gate: throws if the model blanks most segments", async () => {
   // Model returns the right COUNT but empties the content — the silent-drop case.
   installFetch((url, opts) => ok(sentSegments(opts).map(() => "")));

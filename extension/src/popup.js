@@ -13,6 +13,7 @@ const els = {
   selectionRow: document.getElementById("selectionRow"),
   selectionToggle: document.getElementById("selectionToggle"),
   selectionLabel: document.getElementById("selectionLabel"),
+  bilingualToggle: document.getElementById("bilingualToggle"),
   targetLang: document.getElementById("targetLang"),
   deliveryInfo: document.getElementById("deliveryInfo"),
   sendBtn: document.getElementById("sendBtn"),
@@ -157,6 +158,7 @@ async function translateArticle(art, targetLang) {
       endpoint: settings.translationEndpoint,
     },
     {
+      bilingual: els.bilingualToggle && els.bilingualToggle.checked,
       onProgress: (done, total) => {
         if (total > 1) {
           setStatus(
