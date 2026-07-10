@@ -1,18 +1,11 @@
-const DEFAULTS = {
-  amazonDomain: "https://www.amazon.com",
-  translateByDefault: false,
-  defaultTargetLang: "Arabic",
-  translationKey: "",
-  translationModel: "z-ai/glm-5.2",
-  translationFallbackModel: "deepseek-ai/deepseek-v4-pro",
-  translationEndpoint: "https://integrate.api.nvidia.com/v1/chat/completions",
-};
+import { DEFAULT_SETTINGS, IMAGE_ORIGINS, loadSettings, saveSettings } from "./settings.js";
 
 const els = {
   amazonDomain: document.getElementById("amazonDomain"),
   translationKey: document.getElementById("translationKey"),
   translateByDefault: document.getElementById("translateByDefault"),
   defaultTargetLang: document.getElementById("defaultTargetLang"),
+  embedImages: document.getElementById("embedImages"),
   saveBtn: document.getElementById("saveBtn"),
   openAmazonBtn: document.getElementById("openAmazonBtn"),
   status: document.getElementById("status"),
@@ -25,34 +18,50 @@ function setStatus(kind, text) {
 }
 
 async function load() {
-  const s = await chrome.storage.sync.get(DEFAULTS);
-  els.amazonDomain.value = s.amazonDomain || DEFAULTS.amazonDomain;
+  const s = await loadSettings();
+  els.amazonDomain.value = s.amazonDomain || DEFAULT_SETTINGS.amazonDomain;
   els.translationKey.value = s.translationKey || "";
   els.translateByDefault.checked = !!s.translateByDefault;
-  els.defaultTargetLang.value = s.defaultTargetLang || "Arabic";
+  els.defaultTargetLang.value = s.defaultTargetLang || DEFAULT_SETTINGS.defaultTargetLang;
+  // Reflect the *actual* permission, not just the stored flag: the user may have
+  // revoked it from Chrome's extension settings behind our back.
+  const granted = await chrome.permissions.contains({ origins: IMAGE_ORIGINS });
+  els.embedImages.checked = !!s.embedImages && granted;
 }
 
+// Requesting/removing the host permission must happen in the change handler so it
+// runs inside the user gesture (Chrome rejects permission requests otherwise).
+els.embedImages.addEventListener("change", async () => {
+  if (els.embedImages.checked) {
+    const granted = await chrome.permissions.request({ origins: IMAGE_ORIGINS });
+    if (!granted) {
+      els.embedImages.checked = false;
+      setStatus("err", "لم يُمنح الإذن، فلن تُضمَّن الصور.");
+    }
+  } else {
+    await chrome.permissions.remove({ origins: IMAGE_ORIGINS });
+  }
+});
+
 async function save() {
-  let domain = (els.amazonDomain.value.trim() || DEFAULTS.amazonDomain).replace(/\/$/, "");
+  let domain = (els.amazonDomain.value.trim() || DEFAULT_SETTINGS.amazonDomain).replace(/\/$/, "");
   if (!/^https:\/\/[^/]+/.test(domain)) {
     setStatus("err", "نطاق أمازون يجب أن يبدأ بـ https://");
     return;
   }
-  await chrome.storage.sync.set({
+  await saveSettings({
     amazonDomain: domain,
     translationKey: els.translationKey.value.trim(),
-    translationModel: DEFAULTS.translationModel,
-    translationFallbackModel: DEFAULTS.translationFallbackModel,
-    translationEndpoint: DEFAULTS.translationEndpoint,
     translateByDefault: els.translateByDefault.checked,
     defaultTargetLang: els.defaultTargetLang.value,
+    embedImages: els.embedImages.checked,
   });
   setStatus("ok", "تم حفظ الإعدادات.");
 }
 
 els.saveBtn.addEventListener("click", save);
 els.openAmazonBtn.addEventListener("click", () => {
-  const domain = (els.amazonDomain.value.trim() || DEFAULTS.amazonDomain).replace(/\/$/, "");
+  const domain = (els.amazonDomain.value.trim() || DEFAULT_SETTINGS.amazonDomain).replace(/\/$/, "");
   chrome.tabs.create({ url: domain });
 });
 load();

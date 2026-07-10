@@ -2,6 +2,7 @@ import { buildEpub } from "./epub.js";
 import { translateHtml } from "./translate.js";
 import { sendEpubToKindle } from "./deliver.js";
 import { fileToArticle, isSupported } from "./dropconvert.js";
+import { loadSettings, sanitizeFilename } from "./settings.js";
 
 const els = {
   dropzone: document.getElementById("dropzone"),
@@ -23,32 +24,14 @@ const els = {
 let article = null;
 let settings = null;
 
-const DEFAULT_SETTINGS = {
-  amazonDomain: "https://www.amazon.com",
-  translateByDefault: false,
-  defaultTargetLang: "Arabic",
-  translationKey: "",
-  translationModel: "z-ai/glm-5.2",
-  translationFallbackModel: "deepseek-ai/deepseek-v4-pro",
-  translationEndpoint: "https://integrate.api.nvidia.com/v1/chat/completions",
-};
-
 function setStatus(kind, html) {
   els.status.className = "status " + kind;
   els.status.innerHTML = html;
   els.status.classList.remove("hidden");
 }
 
-function sanitizeFilename(name) {
-  return (
-    (name || "document").replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 80) ||
-    "document"
-  );
-}
-
-async function loadSettings() {
-  const stored = await chrome.storage.sync.get(DEFAULT_SETTINGS);
-  settings = { ...DEFAULT_SETTINGS, ...stored };
+async function initSettings() {
+  settings = await loadSettings();
   els.translateToggle.checked = !!settings.translateByDefault;
   els.translateOptions.classList.toggle("hidden", !settings.translateByDefault);
   if (settings.defaultTargetLang) els.targetLang.value = settings.defaultTargetLang;
@@ -94,7 +77,7 @@ async function prepareArticle() {
     art = { ...art, title: out.title || art.title, content: out.html || art.content, dir: out.dir || art.dir, lang: out.lang || art.lang };
   }
   setStatus("working", '<span class="spinner"></span>جارٍ بناء ملفّ EPUB…');
-  const blob = await buildEpub(art);
+  const blob = await buildEpub(art, { embedImages: settings.embedImages });
   return { art, blob };
 }
 
@@ -129,7 +112,7 @@ async function onDownload() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = sanitizeFilename(art.title) + ".epub";
+    a.download = sanitizeFilename(art.title, "document") + ".epub";
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
     setStatus("ok", "تم تنزيل ملفّ EPUB.");
@@ -178,4 +161,4 @@ els.translateToggle.addEventListener("change", () =>
 els.sendBtn.addEventListener("click", onSend);
 els.downloadBtn.addEventListener("click", onDownload);
 
-loadSettings();
+initSettings();
