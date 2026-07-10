@@ -5,6 +5,12 @@ All notable changes to this project are documented here.
 ## [Unreleased]
 
 ### Added
+- **Book customization** — a "تخصيص الكتاب" panel: Arabic font (embed Amiri or
+  Kindle's native), font size, line spacing, margins, justify, cover on/off, and
+  a safe "clean Arabic" option that strips decorative tatweel from scraped text.
+- **Professional UI redesign** across every screen (popup, settings, drop,
+  preview, reading-list) — soft shadowed surfaces, subtle grain, tinted depth,
+  press micro-interactions, and a calmer organized layout, on the existing brand.
 - **Bilingual / interleaved EPUB** — a study mode that keeps the original and
   places its translation after each block (original LTR, translation Arabic RTL,
   each with correct direction). No competitor offers this — it turns a clean
