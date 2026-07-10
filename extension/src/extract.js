@@ -67,9 +67,62 @@
 
   var DROP = "script, style, noscript, nav, header, footer, aside, form, button, iframe, svg, [role=navigation], [role=banner], [role=contentinfo], [aria-hidden=true]";
 
+  // Pick the largest candidate from a srcset string ("url 800w, url2 1600w").
+  function bestFromSrcset(srcset) {
+    if (!srcset) return "";
+    var parts = srcset.split(",");
+    var best = "", bestW = -1;
+    for (var i = 0; i < parts.length; i++) {
+      var bits = parts[i].trim().split(/\s+/);
+      var url = bits[0];
+      if (!url) continue;
+      var desc = bits[1] || "";
+      var w = /w$/.test(desc) ? parseInt(desc, 10) : /x$/.test(desc) ? parseFloat(desc) * 1000 : 0;
+      if (w >= bestW) { bestW = w; best = url; }
+    }
+    return best;
+  }
+
+  // Lazy-loading libraries stash the real image in data-src/srcset (or a
+  // <noscript> fallback) and leave src as a placeholder. We read the live/cloned
+  // DOM, so promote those to a real src BEFORE extraction — server-side scrapers
+  // can't do this, and it's the top "missing images" complaint for the tool class.
+  function promoteLazyImages(root) {
+    var imgs = root.querySelectorAll("img");
+    for (var i = 0; i < imgs.length; i++) {
+      var img = imgs[i];
+      var cur = img.getAttribute("src") || "";
+      var placeholder =
+        !cur ||
+        cur.length < 8 ||
+        /^data:image\/(gif|svg)/i.test(cur) ||
+        /(blank|spacer|placeholder|lazy|1x1|pixel)\.[a-z]+/i.test(cur);
+      if (placeholder) {
+        var lazy =
+          img.getAttribute("data-src") ||
+          img.getAttribute("data-original") ||
+          img.getAttribute("data-lazy-src") ||
+          img.getAttribute("data-lazy") ||
+          bestFromSrcset(img.getAttribute("data-srcset") || img.getAttribute("srcset") || "");
+        if (lazy) img.setAttribute("src", lazy);
+      }
+    }
+    // <noscript> often holds the real <img> for JS-off fallback; surface it.
+    var ns = root.querySelectorAll("noscript");
+    for (var j = 0; j < ns.length; j++) {
+      var txt = ns[j].textContent || "";
+      if (!/<img/i.test(txt) || !ns[j].parentNode) continue;
+      var tmp = root.ownerDocument.createElement("div");
+      tmp.innerHTML = txt;
+      var real = tmp.querySelector("img");
+      if (real) ns[j].parentNode.insertBefore(real, ns[j]);
+    }
+  }
+
   // Serialize a region to clean content HTML: remove chrome/interactive, keep flow.
   function serializeRegion(region) {
     var clone = region.cloneNode(true);
+    promoteLazyImages(clone);
     var drop = clone.querySelectorAll(DROP);
     for (var i = drop.length - 1; i >= 0; i--) drop[i].remove();
     var all = clone.querySelectorAll("*");
@@ -90,6 +143,7 @@
 
   try {
     var documentClone = document.cloneNode(true);
+    promoteLazyImages(documentClone);
     var reader = new Readability(documentClone, { charThreshold: 250 });
     var article = reader.parse();
     var readText = article && article.textContent ? article.textContent.trim().length : 0;

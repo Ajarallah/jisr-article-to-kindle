@@ -65,6 +65,19 @@ test("single-article blog → uses Readability, no chrome leak", () => {
   assert.ok(!/privacy · terms/.test(r.content), "footer not leaked");
 });
 
+// Lazy-loaded images (data-src / srcset / <noscript>) get promoted to real src.
+test("lazy-loaded images are promoted to a real src before extraction", () => {
+  const body =
+    Array.from({ length: 6 }, (_, i) => para(i + 1)).join("") +
+    '<img src="data:image/gif;base64,R0lGODlhAQABAAAAAC” " data-src="https://cdn.example.com/real-1.jpg" alt="a">' +
+    '<img src="/assets/placeholder.png" srcset="https://cdn.example.com/small.jpg 400w, https://cdn.example.com/large.jpg 1600w" alt="b">';
+  const html = `<html lang="en"><body><article><h1>Gallery Post About Things</h1>${body}</article></body></html>`;
+  const r = extract(html, "https://example.com/gallery");
+  assert.equal(r.ok, true);
+  assert.match(r.content, /real-1\.jpg/, "data-src promoted");
+  assert.match(r.content, /large\.jpg/, "largest srcset candidate promoted");
+});
+
 // Mostly-Arabic prose with inline English technical terms → still RTL.
 test("mostly-Arabic with inline English terms → rtl", () => {
   const p =
