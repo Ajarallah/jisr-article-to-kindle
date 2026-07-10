@@ -1,6 +1,7 @@
 import { buildEpub } from "./epub.js";
 import { sendEpubToKindle } from "./deliver.js";
 import { sanitizeFilename } from "./settings.js";
+import { addHistoryEntry } from "./history.js";
 
 const els = {
   frame: document.getElementById("preview"),
@@ -63,6 +64,7 @@ async function onSend() {
     setStatus("working", '<span class="spinner"></span>جارٍ الإرسال إلى كندل…');
     await sendEpubToKindle({ blob, title: article.title, author: article.author || "", domain: article.domain });
     setStatus("ok", "تم الإرسال إلى مكتبة كندل. سيظهر على جهازك خلال دقائق.");
+    addHistoryEntry({ title: article.title, url: article.url, site: article.siteName });
   } catch (e) {
     const msg = e.message || String(e);
     setStatus("err", /سجّل الدخول|مسجّل/.test(msg) ? "لست مسجّلًا دخولك في أمازون. افتح amazon.com وسجّل الدخول ثم أعد المحاولة." : msg);

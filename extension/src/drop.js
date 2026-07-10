@@ -3,6 +3,7 @@ import { translateHtml } from "./translate.js";
 import { sendEpubToKindle } from "./deliver.js";
 import { fileToArticle, isSupported } from "./dropconvert.js";
 import { loadSettings, sanitizeFilename } from "./settings.js";
+import { addHistoryEntry } from "./history.js";
 
 const els = {
   dropzone: document.getElementById("dropzone"),
@@ -100,6 +101,7 @@ async function onSend() {
     setStatus("working", '<span class="spinner"></span>جارٍ الإرسال إلى كندل…');
     await sendEpubToKindle({ blob, title: art.title, author: "", domain: settings.amazonDomain });
     setStatus("ok", "تم الإرسال إلى مكتبة كندل. سيظهر على جهازك خلال دقائق.");
+    addHistoryEntry({ title: art.title, site: "ملفّ" });
   } catch (e) {
     const msg = e.message || String(e);
     if (/سجّل الدخول|مسجّل/.test(msg)) {

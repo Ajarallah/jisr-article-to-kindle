@@ -2,6 +2,7 @@ import { buildEpub } from "./epub.js";
 import { translateHtml } from "./translate.js";
 import { sendEpubToKindle, checkAuth } from "./deliver.js";
 import { loadSettings, sanitizeFilename, originPattern } from "./settings.js";
+import { addHistoryEntry } from "./history.js";
 
 const els = {
   title: document.getElementById("articleTitle"),
@@ -153,6 +154,7 @@ async function onSend() {
       domain: settings.amazonDomain,
     });
     setStatus("ok", "تم الإرسال إلى مكتبة كندل. سيظهر على جهازك خلال دقائق.");
+    addHistoryEntry({ title: art.title, url: art.url, site: art.siteName });
     refreshDeliveryInfo();
   } catch (e) {
     const msg = e.message || String(e);

@@ -1,5 +1,6 @@
 import { DEFAULT_SETTINGS, loadSettings, saveSettings } from "./settings.js";
 import { detectAmazonDomain } from "./deliver.js";
+import { getHistory, clearHistory } from "./history.js";
 
 const els = {
   amazonDomain: document.getElementById("amazonDomain"),
@@ -10,8 +11,40 @@ const els = {
   saveBtn: document.getElementById("saveBtn"),
   openAmazonBtn: document.getElementById("openAmazonBtn"),
   detectDomainBtn: document.getElementById("detectDomainBtn"),
+  historyList: document.getElementById("historyList"),
+  clearHistoryBtn: document.getElementById("clearHistoryBtn"),
   status: document.getElementById("status"),
 };
+
+// Build the history list with DOM nodes (never innerHTML — titles are untrusted).
+async function renderHistory() {
+  const list = await getHistory();
+  els.historyList.textContent = "";
+  if (!list.length) {
+    const li = document.createElement("li");
+    li.className = "history-empty";
+    li.textContent = "لا يوجد سجلّ بعد.";
+    els.historyList.appendChild(li);
+    return;
+  }
+  for (const item of list) {
+    const li = document.createElement("li");
+    const title = document.createElement(item.url ? "a" : "span");
+    title.className = "history-title";
+    title.textContent = item.title || "—";
+    if (item.url) {
+      title.href = item.url;
+      title.target = "_blank";
+      title.rel = "noreferrer";
+    }
+    const meta = document.createElement("span");
+    meta.className = "history-meta";
+    const when = new Date(item.at).toLocaleString("ar");
+    meta.textContent = [item.site, when].filter(Boolean).join(" · ");
+    li.append(title, meta);
+    els.historyList.appendChild(li);
+  }
+}
 
 function setStatus(kind, text) {
   els.status.className = "status " + kind;
@@ -62,9 +95,15 @@ els.detectDomainBtn.addEventListener("click", async () => {
   }
 });
 
+els.clearHistoryBtn.addEventListener("click", async () => {
+  await clearHistory();
+  renderHistory();
+});
+
 els.saveBtn.addEventListener("click", save);
 els.openAmazonBtn.addEventListener("click", () => {
   const domain = (els.amazonDomain.value.trim() || DEFAULT_SETTINGS.amazonDomain).replace(/\/$/, "");
   chrome.tabs.create({ url: domain });
 });
 load();
+renderHistory();
