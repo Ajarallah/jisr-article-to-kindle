@@ -9,18 +9,41 @@ All notable changes to this project are documented here.
   on in Settings and the browser asks for permission to read images from article
   sites; `epub.js` then fetches and embeds them. Previously the extension always
   tried to embed but never had the permission, so images were silently dropped.
+- **Auto-generated cover** — a typographic cover (brand blue, RTL-aware, title +
+  source) so the Kindle library shows a real thumbnail, not a placeholder.
+- **Navigable table of contents** — the EPUB now builds its TOC from the
+  article's headings instead of a single flat entry.
+- **Lazy-loaded images are captured** — `data-src`/`srcset`/`<noscript>` images
+  are resolved before extraction, so image-heavy pages no longer come out blank.
 
 ### Changed
+- **Reliability** — every network request (Amazon delivery, S3 upload,
+  translation, image fetch) now has a timeout and can be cancelled, so a hung
+  connection no longer spins forever. Oversize books (>50 MB) are caught before
+  upload with a clear message; offline is no longer mistaken for logged-out.
+- **Arabic rendering** — headings re-declare RTL, code/inline-English is isolated
+  so it can't corrupt Arabic punctuation, line-height is looser, and
+  letter-spacing (which breaks Arabic joining) is pinned off. Language tags are
+  lowercased so Amazon doesn't reject the file.
+- **Long-article translation** no longer fails on dense Arabic (RTL-aware
+  batching + a larger output budget), and shows per-batch progress.
 - **NVIDIA API key now stored in `chrome.storage.local`** instead of `sync`, so
   the secret no longer roams to Google's cloud or your other devices. Any key
   from an older build is migrated automatically.
 - **Toolbar icon** is a simple open-book glyph that stays legible at 16px (the
   previous 16px icon was dense poster art that collapsed into a smudge).
 
+### Accessibility
+- Status/progress regions announce to screen readers (`role="status"`,
+  `aria-live`).
+
 ### Internal
 - Settings (`DEFAULT_SETTINGS`, `sanitizeFilename`, load/save) consolidated into
   a single `src/settings.js`, ending the three-way duplication across popup,
   drop and options.
+- New `src/net.js` (timeout/cancel helper) and first-ever test coverage for the
+  Amazon delivery flow; tolerant CSRF parsing replaces a byte-exact regex. Test
+  count 21 → 32.
 
 ## [0.3.0] — 2026-07-07
 
