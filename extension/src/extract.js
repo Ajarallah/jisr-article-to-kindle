@@ -155,7 +155,7 @@
     // has more real content than Readability (guards normal articles).
     var useMain = main.el && mainText > 1200 && mainText > readText * 1.4;
 
-    var content, title, byline, siteName, lang, dirText;
+    var content, title, byline, siteName, dirText;
     if (useMain) {
       content = serializeRegion(main.el);
       title = (article && article.title) || metaTitle(document);
