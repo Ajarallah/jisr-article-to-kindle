@@ -1,7 +1,7 @@
 import { buildEpub } from "./epub.js";
 import { translateHtml } from "./translate.js";
 import { sendEpubToKindle, checkAuth } from "./deliver.js";
-import { loadSettings, sanitizeFilename, originPattern } from "./settings.js";
+import { loadSettings, sanitizeFilename, originPattern, bookOptions } from "./settings.js";
 import { addHistoryEntry } from "./history.js";
 import { addToList } from "./readinglist.js";
 import { annotateHtml } from "./glossary.js";
@@ -225,7 +225,7 @@ async function prepareArticle(embedImages) {
     art = { ...art, content: annotated };
   }
   setStatus("working", '<span class="spinner"></span>جارٍ بناء ملف EPUB…');
-  const blob = await buildEpub(art, { embedImages });
+  const blob = await buildEpub(art, bookOptions(settings, { embedImages }));
   return { art, blob };
 }
 

@@ -83,6 +83,54 @@
     </section>
 
     <section class="panel">
+      <h2>تخصيص الكتاب</h2>
+      <p class="hint">شكل النصّ داخل ملفّ EPUB. بعض الأجهزة قد تتجاوز الحجم والهوامش بإعداداتها الخاصّة.</p>
+      <label class="field">
+        <span>خطّ العربية</span>
+        <select id="bookFont">
+          <option value="amiri">أميري (مضمَّن)</option>
+          <option value="native">خطّ كندل الأصليّ</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>حجم الخطّ</span>
+        <select id="fontSize">
+          <option value="small">صغير</option>
+          <option value="medium">متوسّط</option>
+          <option value="large">كبير</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>تباعد الأسطر</span>
+        <select id="lineSpacing">
+          <option value="compact">مضغوط</option>
+          <option value="normal">عادي</option>
+          <option value="relaxed">مريح</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>الهوامش</span>
+        <select id="margin">
+          <option value="tight">ضيّقة</option>
+          <option value="normal">عادية</option>
+          <option value="wide">واسعة</option>
+        </select>
+      </label>
+      <label class="switch-row" style="margin-top:12px">
+        <span class="switch-label">ضبط النصّ من الطرفين (justify)</span>
+        <span class="switch"><input type="checkbox" id="justify" /><span class="track"><span class="thumb"></span></span></span>
+      </label>
+      <label class="switch-row">
+        <span class="switch-label">توليد غلاف تلقائيّ</span>
+        <span class="switch"><input type="checkbox" id="includeCover" /><span class="track"><span class="thumb"></span></span></span>
+      </label>
+      <label class="switch-row">
+        <span class="switch-label">تنظيف النصّ العربيّ (إزالة التطويل ـــ)</span>
+        <span class="switch"><input type="checkbox" id="cleanArabic" /><span class="track"><span class="thumb"></span></span></span>
+      </label>
+    </section>
+
+    <section class="panel">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
         <h2 style="margin:0">آخر ما أُرسل</h2>
         <button id="clearHistoryBtn" class="btn ghost" type="button">مسح السجلّ</button>

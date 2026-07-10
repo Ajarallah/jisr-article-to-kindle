@@ -8,6 +8,13 @@ const els = {
   translateByDefault: document.getElementById("translateByDefault"),
   defaultTargetLang: document.getElementById("defaultTargetLang"),
   embedImages: document.getElementById("embedImages"),
+  bookFont: document.getElementById("bookFont"),
+  fontSize: document.getElementById("fontSize"),
+  lineSpacing: document.getElementById("lineSpacing"),
+  margin: document.getElementById("margin"),
+  justify: document.getElementById("justify"),
+  includeCover: document.getElementById("includeCover"),
+  cleanArabic: document.getElementById("cleanArabic"),
   saveBtn: document.getElementById("saveBtn"),
   openAmazonBtn: document.getElementById("openAmazonBtn"),
   detectDomainBtn: document.getElementById("detectDomainBtn"),
@@ -61,6 +68,13 @@ async function load() {
   // Just a default preference now — the actual per-site permission is requested
   // from the popup at send time (only that article's origin, never all sites).
   els.embedImages.checked = !!s.embedImages;
+  els.bookFont.value = s.bookFont || DEFAULT_SETTINGS.bookFont;
+  els.fontSize.value = s.fontSize || DEFAULT_SETTINGS.fontSize;
+  els.lineSpacing.value = s.lineSpacing || DEFAULT_SETTINGS.lineSpacing;
+  els.margin.value = s.margin || DEFAULT_SETTINGS.margin;
+  els.justify.checked = !!s.justify;
+  els.includeCover.checked = s.includeCover !== false;
+  els.cleanArabic.checked = !!s.cleanArabic;
 }
 
 async function save() {
@@ -75,6 +89,13 @@ async function save() {
     translateByDefault: els.translateByDefault.checked,
     defaultTargetLang: els.defaultTargetLang.value,
     embedImages: els.embedImages.checked,
+    bookFont: els.bookFont.value,
+    fontSize: els.fontSize.value,
+    lineSpacing: els.lineSpacing.value,
+    margin: els.margin.value,
+    justify: els.justify.checked,
+    includeCover: els.includeCover.checked,
+    cleanArabic: els.cleanArabic.checked,
   });
   setStatus("ok", "تم حفظ الإعدادات.");
 }

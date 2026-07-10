@@ -1,6 +1,6 @@
 import { buildEpub } from "./epub.js";
 import { sendEpubToKindle } from "./deliver.js";
-import { sanitizeFilename } from "./settings.js";
+import { sanitizeFilename, loadSettings, bookOptions } from "./settings.js";
 import { addHistoryEntry } from "./history.js";
 
 const els = {
@@ -12,6 +12,11 @@ const els = {
 };
 
 let article = null;
+let settings = null;
+
+function buildOpts() {
+  return bookOptions(settings || {}, { embedImages: !!article.embedImages });
+}
 
 function setStatus(kind, html) {
   els.status.className = "status " + kind;
@@ -60,7 +65,7 @@ async function onSend() {
   els.downloadBtn.disabled = true;
   try {
     setStatus("working", '<span class="spinner"></span>جارٍ بناء ملفّ EPUB…');
-    const blob = await buildEpub(article, { embedImages: !!article.embedImages });
+    const blob = await buildEpub(article, buildOpts());
     setStatus("working", '<span class="spinner"></span>جارٍ الإرسال إلى كندل…');
     await sendEpubToKindle({ blob, title: article.title, author: article.author || "", domain: article.domain });
     setStatus("ok", "تم الإرسال إلى مكتبة كندل. سيظهر على جهازك خلال دقائق.");
@@ -80,7 +85,7 @@ async function onDownload() {
   els.downloadBtn.disabled = true;
   try {
     setStatus("working", '<span class="spinner"></span>جارٍ بناء ملفّ EPUB…');
-    const blob = await buildEpub(article, { embedImages: !!article.embedImages });
+    const blob = await buildEpub(article, buildOpts());
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -100,6 +105,7 @@ els.sendBtn.addEventListener("click", onSend);
 els.downloadBtn.addEventListener("click", onDownload);
 
 (async function init() {
+  settings = await loadSettings();
   const { a2k_preview } = await chrome.storage.local.get("a2k_preview");
   if (!a2k_preview || !a2k_preview.content) {
     setStatus("err", "لا يوجد محتوى للمعاينة. افتح مقالًا واضغط «معاينة» من الإضافة.");

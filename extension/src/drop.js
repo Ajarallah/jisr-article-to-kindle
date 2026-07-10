@@ -2,7 +2,7 @@ import { buildEpub } from "./epub.js";
 import { translateHtml } from "./translate.js";
 import { sendEpubToKindle } from "./deliver.js";
 import { fileToArticle, isSupported } from "./dropconvert.js";
-import { loadSettings, sanitizeFilename } from "./settings.js";
+import { loadSettings, sanitizeFilename, bookOptions } from "./settings.js";
 import { addHistoryEntry } from "./history.js";
 
 const els = {
@@ -89,7 +89,7 @@ async function prepareArticle() {
     art = { ...art, title: out.title || art.title, content: out.html || art.content, dir: out.dir || art.dir, lang: out.lang || art.lang };
   }
   setStatus("working", '<span class="spinner"></span>جارٍ بناء ملفّ EPUB…');
-  const blob = await buildEpub(art, { embedImages: settings.embedImages });
+  const blob = await buildEpub(art, bookOptions(settings, { embedImages: settings.embedImages }));
   return { art, blob };
 }
 

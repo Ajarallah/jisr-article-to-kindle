@@ -228,6 +228,31 @@ test("language tag is simplified (en-US → en) and U+FFFD is stripped", async (
   assert.match(chapter, /Clean text with a bad char/, "surrounding text intact");
 });
 
+test("document customization: font-size, spacing, justify, margin, native font, no cover, clean-arabic", async () => {
+  const blob = await buildEpub(
+    {
+      title: "مقال",
+      content: "<p>نصّ عربيّ فيه تطويــــل مزخرف.</p>",
+      dir: "rtl",
+      lang: "ar",
+      url: "https://example.com/ar",
+    },
+    { bookFont: "native", fontSize: "large", lineSpacing: "relaxed", margin: "wide", justify: true, includeCover: false, cleanArabic: true }
+  );
+  const zip = await readZip(blob);
+  const css = await zip.file("OEBPS/styles/style.css").async("string");
+  assert.match(css, /font-size: 1\.18em/, "large font-size");
+  assert.match(css, /line-height: 2\.1/, "relaxed RTL line-height");
+  assert.match(css, /padding: 1\.6em/, "wide margin");
+  assert.match(css, /text-align: justify/, "justified");
+  assert.doesNotMatch(css, /@font-face/, "native font → no embedded @font-face");
+  const opf = await zip.file("OEBPS/content.opf").async("string");
+  assert.doesNotMatch(opf, /cover-image/, "cover off → no cover in manifest");
+  const chapter = await zip.file("OEBPS/text/chapter.xhtml").async("string");
+  assert.doesNotMatch(chapter, /ـ/, "tatweel removed");
+  assert.match(chapter, /نصّ عربيّ/, "text otherwise intact");
+});
+
 test("LTR article -> no RTL markers", async () => {
   const blob = await buildEpub({
     title: "A Test Title",

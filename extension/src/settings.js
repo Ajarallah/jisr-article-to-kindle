@@ -17,7 +17,30 @@ export const DEFAULT_SETTINGS = {
   translationFallbackModel: "deepseek-ai/deepseek-v4-pro",
   translationEndpoint: "https://integrate.api.nvidia.com/v1/chat/completions",
   embedImages: false,
+  // Book customization (how the EPUB is styled — honored by Kindle via our CSS/OPF).
+  bookFont: "amiri", // "amiri" = embed the Arabic font, "native" = Kindle's own font
+  fontSize: "medium", // "small" | "medium" | "large" (baked default; Kindle may override)
+  lineSpacing: "normal", // "compact" | "normal" | "relaxed"
+  margin: "normal", // "tight" | "normal" | "wide" (page padding)
+  justify: false, // justified text vs natural start-alignment (RTL justification is weak on Kindle)
+  includeCover: true, // auto-generate a cover image
+  cleanArabic: false, // strip decorative tatweel (kashida) from Arabic text
 };
+
+// Bundle the book-customization options for buildEpub/buildBook, merging any
+// per-send extras (e.g. embedImages).
+export function bookOptions(settings, extra = {}) {
+  return {
+    bookFont: settings.bookFont,
+    fontSize: settings.fontSize,
+    lineSpacing: settings.lineSpacing,
+    margin: settings.margin,
+    justify: settings.justify,
+    includeCover: settings.includeCover,
+    cleanArabic: settings.cleanArabic,
+    ...extra,
+  };
+}
 
 // Build a single-origin match pattern ("https://host/*") for a page URL, so the
 // image-embed opt-in can request just that site's images instead of all sites.

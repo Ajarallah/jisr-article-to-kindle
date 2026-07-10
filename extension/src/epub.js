@@ -114,7 +114,7 @@ async function processImageBlob(blob, mime) {
  * Turn the Readability HTML string into well-formed XHTML body content,
  * embedding images into the zip. Returns { xhtml, images:[{path,base64,mime}] }.
  */
-async function normalizeContent(htmlString, baseUrl, embedImages, imgPrefix = "") {
+async function normalizeContent(htmlString, baseUrl, embedImages, imgPrefix = "", cleanArabic = false) {
   const doc = new DOMParser().parseFromString(htmlString, "text/html");
   const images = [];
   let imgIndex = 0;
@@ -220,6 +220,9 @@ async function normalizeContent(htmlString, baseUrl, embedImages, imgPrefix = ""
   // Strip U+FFFD replacement chars (visible "�", usually an upstream encoding
   // slip — most common after translation).
   xhtml = xhtml.replace(/�/g, "");
+  // Optional: remove decorative tatweel/kashida (ـ U+0640) from scraped Arabic.
+  // Safe (purely presentational elongation), opt-in, never touches spelling.
+  if (cleanArabic) xhtml = xhtml.replace(/ـ/g, "");
   // XMLSerializer already produces XML-namespaced, self-closed tags.
   return { xhtml, images, headings };
 }
@@ -244,7 +247,24 @@ function assertWellFormed(xml, label) {
   }
 }
 
-function buildCss(isRtl, hasArabicFont) {
+// Line-height presets (Arabic needs more leading than Latin).
+const LINE_SPACING = {
+  compact: { rtl: "1.6", ltr: "1.45" },
+  normal: { rtl: "1.85", ltr: "1.7" },
+  relaxed: { rtl: "2.1", ltr: "1.95" },
+};
+// Baked-in defaults (a reader may still override on-device).
+const FONT_SIZE = { small: "0.95em", medium: "1em", large: "1.18em" };
+const MARGIN = { tight: "0.5em", normal: "1em", wide: "1.6em" };
+
+function styleVars(style = {}) {
+  return {
+    fontSize: FONT_SIZE[style.fontSize] || FONT_SIZE.medium,
+    pad: MARGIN[style.margin] || MARGIN.normal,
+  };
+}
+
+function buildCss(isRtl, hasArabicFont, style = {}) {
   // Belt-and-suspenders RTL: even though dir="rtl" is on the elements, some
   // Kindle firmware needs the CSS direction too.
   const fontFace =
@@ -260,18 +280,17 @@ function buildCss(isRtl, hasArabicFont) {
     isRtl && hasArabicFont
       ? `"A2K Arabic", "Noto Naskh Arabic", serif`
       : "serif";
-  // Arabic needs more leading (ascenders + optional marks stack tall) and must
-  // re-declare direction on headings — some readers revert them to LTR when they
-  // only inherit it. Never set letter-spacing on Arabic: it breaks letter joining.
-  const lineHeight = isRtl ? "1.85" : "1.7";
-  const rtlRules = isRtl
-    ? `body { direction: rtl; text-align: right; }
-h1, h2, h3 { direction: rtl; text-align: right; }
-`
-    : "";
+  // Never set letter-spacing on Arabic: it breaks letter joining. Headings
+  // re-declare direction (some readers revert them to LTR) and are never justified.
+  const spacing = LINE_SPACING[style.lineSpacing] || LINE_SPACING.normal;
+  const lineHeight = isRtl ? spacing.rtl : spacing.ltr;
+  const align = style.justify ? "justify" : isRtl ? "right" : "left";
+  const dirDecl = isRtl ? "direction: rtl; " : "";
+  const headingRtl = isRtl ? `h1, h2, h3 { direction: rtl; text-align: right; }\n` : "";
+  const v = styleVars(style);
   return `${fontFace}html, body { margin: 0; padding: 0; }
-body { font-family: ${bodyFont}; line-height: ${lineHeight}; padding: 1em; letter-spacing: normal; }
-${rtlRules}h1, h2, h3 { line-height: 1.35; }
+body { font-family: ${bodyFont}; font-size: ${v.fontSize}; line-height: ${lineHeight}; padding: ${v.pad}; letter-spacing: normal; ${dirDecl}text-align: ${align}; }
+${headingRtl}h1, h2, h3 { line-height: 1.35; }
 img { max-width: 100%; height: auto; }
 figure { margin: 1em 0; text-align: center; }
 figcaption { font-size: 0.85em; color: #555; }
@@ -401,16 +420,21 @@ async function buildEpub(article, opts = {}) {
   const { xhtml, images, headings } = await normalizeContent(
     article.content,
     article.url || "",
-    embedImages
+    embedImages,
+    "",
+    !!opts.cleanArabic
   );
 
   // Embed an Arabic font for RTL articles — the differentiator. Without a
-  // shaping-capable font, Kindle shows "tofu" boxes for Arabic.
-  const arabicFontB64 = isRtl ? await loadArabicFontBase64() : null;
+  // shaping-capable font, Kindle shows "tofu" boxes for Arabic. The user can opt
+  // to use Kindle's own Arabic font instead (bookFont: "native").
+  const wantArabicFont = (opts.bookFont || "amiri") !== "native";
+  const arabicFontB64 = isRtl && wantArabicFont ? await loadArabicFontBase64() : null;
   const hasArabicFont = !!arabicFontB64;
 
-  // Auto-generated typographic cover (null outside the extension / in tests).
-  const cover = await generateCoverJpeg(article, isRtl);
+  // Auto-generated typographic cover (null outside the extension / in tests, or
+  // when the user turned covers off).
+  const cover = opts.includeCover === false ? null : await generateCoverJpeg(article, isRtl);
 
   // 1) mimetype — MUST be first and stored (uncompressed).
   zip.file("mimetype", "application/epub+zip", { compression: "STORE" });
@@ -427,7 +451,15 @@ async function buildEpub(article, opts = {}) {
   );
 
   // 3) styles + images + font
-  zip.file("OEBPS/styles/style.css", buildCss(isRtl, hasArabicFont));
+  zip.file(
+    "OEBPS/styles/style.css",
+    buildCss(isRtl, hasArabicFont, {
+      lineSpacing: opts.lineSpacing,
+      justify: opts.justify,
+      fontSize: opts.fontSize,
+      margin: opts.margin,
+    })
+  );
   for (const img of images) {
     zip.file("OEBPS/" + img.path, img.base64, { base64: true });
   }
@@ -573,15 +605,19 @@ ${coverManifest}${fontManifest}${imageManifest}
 // Book-level CSS: direction is driven by each chapter's dir attribute (chapters
 // can differ), so styling keys off [dir="rtl"]/[dir="ltr"] instead of a global
 // body direction. Same Arabic-safety rules as buildCss.
-function buildBookCss(hasArabicFont) {
+function buildBookCss(hasArabicFont, style = {}) {
   const fontFace = hasArabicFont
     ? `@font-face { font-family: "A2K Arabic"; src: url("../fonts/Amiri-Regular.ttf"); font-weight: normal; font-style: normal; }\n`
     : "";
   const arFamily = hasArabicFont ? `"A2K Arabic", "Noto Naskh Arabic", serif` : "serif";
+  const sp = LINE_SPACING[style.lineSpacing] || LINE_SPACING.normal;
+  const rtlAlign = style.justify ? "justify" : "right";
+  const ltrAlign = style.justify ? "justify" : "left";
+  const v = styleVars(style);
   return `${fontFace}html, body { margin: 0; padding: 0; }
-body { font-family: serif; line-height: 1.7; padding: 1em; letter-spacing: normal; }
-[dir="rtl"] { direction: rtl; text-align: right; line-height: 1.85; font-family: ${arFamily}; }
-[dir="ltr"] { direction: ltr; text-align: left; }
+body { font-family: serif; font-size: ${v.fontSize}; line-height: ${sp.ltr}; padding: ${v.pad}; letter-spacing: normal; }
+[dir="rtl"] { direction: rtl; text-align: ${rtlAlign}; line-height: ${sp.rtl}; font-family: ${arFamily}; }
+[dir="ltr"] { direction: ltr; text-align: ${ltrAlign}; }
 h1, h2, h3 { line-height: 1.35; }
 [dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3 { direction: rtl; text-align: right; }
 img { max-width: 100%; height: auto; }
@@ -618,12 +654,16 @@ async function buildBook(articles, opts = {}) {
   const nowIso = new Date().toISOString().replace(/\.\d+Z$/, "Z");
   const dateIso = nowIso.slice(0, 10);
 
-  const arabicFontB64 = anyRtl ? await loadArabicFontBase64() : null;
+  const wantArabicFont = (opts.bookFont || "amiri") !== "native";
+  const arabicFontB64 = anyRtl && wantArabicFont ? await loadArabicFontBase64() : null;
   const hasArabicFont = !!arabicFontB64;
-  const cover = await generateCoverJpeg(
-    { title: bookTitle, siteName: articles.length > 1 ? `${articles.length} مقالات` : articles[0].siteName, url: articles[0].url },
-    bookDir === "rtl"
-  );
+  const cover =
+    opts.includeCover === false
+      ? null
+      : await generateCoverJpeg(
+          { title: bookTitle, siteName: articles.length > 1 ? `${articles.length} مقالات` : articles[0].siteName, url: articles[0].url },
+          bookDir === "rtl"
+        );
 
   zip.file("mimetype", "application/epub+zip", { compression: "STORE" });
   zip.file(
@@ -633,7 +673,15 @@ async function buildBook(articles, opts = {}) {
   <rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles>
 </container>`
   );
-  zip.file("OEBPS/styles/style.css", buildBookCss(hasArabicFont));
+  zip.file(
+    "OEBPS/styles/style.css",
+    buildBookCss(hasArabicFont, {
+      lineSpacing: opts.lineSpacing,
+      justify: opts.justify,
+      fontSize: opts.fontSize,
+      margin: opts.margin,
+    })
+  );
   if (hasArabicFont) zip.file("OEBPS/fonts/Amiri-Regular.ttf", arabicFontB64, { base64: true });
   if (cover) zip.file("OEBPS/images/cover.jpg", cover.base64, { base64: true });
 
@@ -642,7 +690,7 @@ async function buildBook(articles, opts = {}) {
     const a = articles[i];
     const cdir = a.dir === "rtl" ? "rtl" : "ltr";
     const clang = simplifyLang(a.lang) || (cdir === "rtl" ? "ar" : "en");
-    const { xhtml, images, headings } = await normalizeContent(a.content, a.url || "", embedImages, `c${i}-`);
+    const { xhtml, images, headings } = await normalizeContent(a.content, a.url || "", embedImages, `c${i}-`, !!opts.cleanArabic);
     for (const img of images) zip.file("OEBPS/" + img.path, img.base64, { base64: true });
     const src = a.url ? `<div class="a2k-meta">${escapeXml(a.url)}</div>` : "";
     const file = `text/chapter${i}.xhtml`;

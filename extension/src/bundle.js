@@ -1,6 +1,6 @@
 import { buildBook } from "./epub.js";
 import { sendEpubToKindle } from "./deliver.js";
-import { loadSettings, sanitizeFilename } from "./settings.js";
+import { loadSettings, sanitizeFilename, bookOptions } from "./settings.js";
 import { getList, removeAt, clearList } from "./readinglist.js";
 import { addHistoryEntry } from "./history.js";
 
@@ -71,7 +71,7 @@ function render() {
 
 async function buildBlob() {
   setStatus("working", '<span class="spinner"></span>جارٍ بناء الكتاب…');
-  return buildBook(list, { title: list.length === 1 ? list[0].title : `مجموعة قراءة · ${list.length} مقالات` });
+  return buildBook(list, bookOptions(settings, { title: list.length === 1 ? list[0].title : `مجموعة قراءة · ${list.length} مقالات` }));
 }
 
 async function onSend() {
