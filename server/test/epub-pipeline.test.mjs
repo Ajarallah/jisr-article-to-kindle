@@ -117,6 +117,41 @@ test("Arabic EPUB quality: RTL heading CSS, LTR code, lowercase lang, dc:date, T
   assert.match(nav, /chapter\.xhtml#sec-/, "TOC links the auto-id'd heading");
 });
 
+test("cover generation: when canvas is available, EPUB carries a cover image + metadata", async () => {
+  // Minimal OffscreenCanvas/createImageBitmap shims so generateCoverJpeg runs.
+  const g = globalThis;
+  g.createImageBitmap = async () => ({ width: 10, height: 10, close() {} });
+  g.OffscreenCanvas = class {
+    constructor(w, h) { this.width = w; this.height = h; }
+    getContext() {
+      return {
+        fillRect() {}, drawImage() {}, fillText() {},
+        measureText(t) { return { width: String(t).length * 12 }; },
+        set fillStyle(_v) {}, set font(_v) {}, set direction(_v) {}, set textAlign(_v) {},
+      };
+    }
+    async convertToBlob() { return new Blob([new Uint8Array([1, 2, 3])], { type: "image/jpeg" }); }
+  };
+  try {
+    const blob = await buildEpub({
+      title: "Covered Article",
+      content: "<p>Body.</p>",
+      dir: "ltr",
+      lang: "en",
+      url: "https://news.example.com/x",
+      siteName: "Example News",
+    });
+    const zip = await readZip(blob);
+    assert.ok(zip.file("OEBPS/images/cover.jpg"), "cover image written");
+    const opf = await zip.file("OEBPS/content.opf").async("string");
+    assert.match(opf, /properties="cover-image"/, "cover-image manifest property");
+    assert.match(opf, /<meta name="cover" content="cover-img"\/>/, "EPUB2 cover meta");
+  } finally {
+    delete g.OffscreenCanvas;
+    delete g.createImageBitmap;
+  }
+});
+
 test("LTR article -> no RTL markers", async () => {
   const blob = await buildEpub({
     title: "A Test Title",

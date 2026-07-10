@@ -14,6 +14,19 @@
  *    remote link.
  */
 
+import { fetchWithTimeout } from "./net.js";
+
+// Embedding guards: keep opt-in image embedding from blowing past the 50 MB
+// Send-to-Kindle limit or exhausting memory on a gallery page.
+const MAX_IMAGES = 40;
+const MAX_IMAGE_BYTES = 6 * 1024 * 1024;
+const MAX_TOTAL_IMAGE_BYTES = 40 * 1024 * 1024;
+const IMAGE_MAX_DIM = 1600;
+
+function canUseCanvas() {
+  return typeof OffscreenCanvas !== "undefined" && typeof createImageBitmap !== "undefined";
+}
+
 function uuidv4() {
   // Not cryptographically important — just a stable book id.
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
@@ -55,6 +68,39 @@ async function blobToBase64(blob) {
 }
 
 /*
+ * Downscale/re-encode a raster image so EPUBs stay small and dark-mode safe
+ * (Amazon recompresses anyway; transparent PNGs misbehave on dark backgrounds).
+ * Flattens transparency onto white and outputs JPEG. Returns the original blob
+ * untouched for vector/animated formats or when canvas isn't available (tests).
+ */
+async function processImageBlob(blob, mime) {
+  if (mime === "image/svg+xml" || mime === "image/gif" || !canUseCanvas()) {
+    return { blob, mime };
+  }
+  try {
+    const bitmap = await createImageBitmap(blob);
+    const scale = Math.min(1, IMAGE_MAX_DIM / Math.max(bitmap.width, bitmap.height));
+    if (scale === 1 && mime === "image/jpeg" && blob.size <= MAX_IMAGE_BYTES) {
+      if (bitmap.close) bitmap.close();
+      return { blob, mime };
+    }
+    const w = Math.max(1, Math.round(bitmap.width * scale));
+    const h = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = new OffscreenCanvas(w, h);
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    if (bitmap.close) bitmap.close();
+    const out = await canvas.convertToBlob({ type: "image/jpeg", quality: 0.82 });
+    if (scale < 1 || out.size < blob.size) return { blob: out, mime: "image/jpeg" };
+    return { blob, mime };
+  } catch (e) {
+    return { blob, mime };
+  }
+}
+
+/*
  * Turn the Readability HTML string into well-formed XHTML body content,
  * embedding images into the zip. Returns { xhtml, images:[{path,base64,mime}] }.
  */
@@ -68,19 +114,28 @@ async function normalizeContent(htmlString, baseUrl, embedImages) {
   if (!embedImages) {
     imgEls.forEach((img) => img.remove());
   }
+  let totalBytes = 0;
   for (const img of embedImages ? imgEls : []) {
     let src = img.getAttribute("src") || img.getAttribute("data-src") || "";
-    if (!src) {
+    if (!src || images.length >= MAX_IMAGES) {
       img.remove();
       continue;
     }
     try {
       const absUrl = new URL(src, baseUrl).href;
-      const resp = await fetch(absUrl);
+      const resp = await fetchWithTimeout(absUrl, {});
       if (!resp.ok) throw new Error("bad status " + resp.status);
-      const blob = await resp.blob();
-      const mime = blob.type || "image/jpeg";
+      let blob = await resp.blob();
+      let mime = blob.type || "image/jpeg";
       if (!mime.startsWith("image/")) throw new Error("not an image");
+      ({ blob, mime } = await processImageBlob(blob, mime));
+      // Skip images that are still too big, or that would push the book over the
+      // total budget — an oversize EPUB fails opaquely at Amazon's upload stage.
+      if (blob.size > MAX_IMAGE_BYTES || totalBytes + blob.size > MAX_TOTAL_IMAGE_BYTES) {
+        img.remove();
+        continue;
+      }
+      totalBytes += blob.size;
       const ext = extFromMime(mime);
       const path = `images/img${imgIndex++}.${ext}`;
       const base64 = await blobToBase64(blob);
@@ -196,6 +251,78 @@ async function loadArabicFontBase64() {
   }
 }
 
+// Greedy word-wrap against the canvas' current font. Returns lines.
+function wrapText(ctx, text, maxWidth) {
+  const words = String(text || "").split(/\s+/).filter(Boolean);
+  const lines = [];
+  let cur = "";
+  for (const w of words) {
+    const t = cur ? cur + " " + w : w;
+    if (cur && ctx.measureText(t).width > maxWidth) {
+      lines.push(cur);
+      cur = w;
+    } else {
+      cur = t;
+    }
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+/*
+ * Generate a simple typographic cover (brand blue, RTL-aware) so the Kindle
+ * library shows a real thumbnail with the title + source instead of a generic
+ * placeholder. Returns { base64, mime } or null when canvas isn't available
+ * (test harness / older environments) — in which case the book ships coverless.
+ */
+async function generateCoverJpeg(article, isRtl) {
+  if (!canUseCanvas()) return null;
+  try {
+    const W = 1600;
+    const H = 2400;
+    const margin = 150;
+    const canvas = new OffscreenCanvas(W, H);
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#3644ED";
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "#AEF769";
+    ctx.fillRect(0, H - 170, W, 26);
+
+    const family = isRtl ? '"Noto Naskh Arabic", "Amiri", serif' : "Georgia, serif";
+    ctx.direction = isRtl ? "rtl" : "ltr";
+    ctx.textAlign = isRtl ? "right" : "left";
+    const x = isRtl ? W - margin : margin;
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `bold 100px ${family}`;
+    const lines = wrapText(ctx, article.title || "بدون عنوان", W - margin * 2).slice(0, 8);
+    let y = 560;
+    for (const ln of lines) {
+      ctx.fillText(ln, x, y);
+      y += 140;
+    }
+
+    let host = article.siteName || "";
+    if (!host && article.url) {
+      try {
+        host = new URL(article.url).hostname.replace(/^www\./, "");
+      } catch (e) {
+        host = "";
+      }
+    }
+    if (host) {
+      ctx.font = `52px ${family}`;
+      ctx.fillStyle = "rgba(255,255,255,0.88)";
+      ctx.fillText(host, x, H - 280);
+    }
+
+    const out = await canvas.convertToBlob({ type: "image/jpeg", quality: 0.85 });
+    return { base64: await blobToBase64(out), mime: "image/jpeg" };
+  } catch (e) {
+    return null;
+  }
+}
+
 /*
  * Public API. article = object from extract.js (possibly with translated
  * title/content already substituted).
@@ -226,6 +353,9 @@ async function buildEpub(article, opts = {}) {
   const arabicFontB64 = isRtl ? await loadArabicFontBase64() : null;
   const hasArabicFont = !!arabicFontB64;
 
+  // Auto-generated typographic cover (null outside the extension / in tests).
+  const cover = await generateCoverJpeg(article, isRtl);
+
   // 1) mimetype — MUST be first and stored (uncompressed).
   zip.file("mimetype", "application/epub+zip", { compression: "STORE" });
 
@@ -247,6 +377,9 @@ async function buildEpub(article, opts = {}) {
   }
   if (hasArabicFont) {
     zip.file("OEBPS/fonts/Amiri-Regular.ttf", arabicFontB64, { base64: true });
+  }
+  if (cover) {
+    zip.file("OEBPS/images/cover.jpg", cover.base64, { base64: true });
   }
 
   // 4) chapter xhtml
@@ -339,6 +472,11 @@ ${headings
   const fontManifest = hasArabicFont
     ? `    <item id="arfont" href="fonts/Amiri-Regular.ttf" media-type="font/ttf"/>\n`
     : "";
+  const coverManifest = cover
+    ? `    <item id="cover-img" href="images/cover.jpg" media-type="image/jpeg" properties="cover-image"/>\n`
+    : "";
+  // EPUB2-style cover meta too — Kindle's library thumbnail keys off it.
+  const coverMeta = cover ? `    <meta name="cover" content="cover-img"/>\n` : "";
 
   // 8) content.opf
   const ppd = isRtl ? ' page-progression-direction="rtl"' : "";
@@ -353,14 +491,14 @@ ${headings
     <dc:creator>${escapeXml(article.byline || article.siteName || "Article to Kindle")}</dc:creator>
     <dc:source>${escapeXml(article.url || "")}</dc:source>
     <dc:date>${escapeXml(article.date || dateIso)}</dc:date>
-    <meta property="dcterms:modified">${nowIso}</meta>
+${coverMeta}    <meta property="dcterms:modified">${nowIso}</meta>
   </metadata>
   <manifest>
     <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
     <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
     <item id="chapter" href="text/chapter.xhtml" media-type="application/xhtml+xml"/>
     <item id="css" href="styles/style.css" media-type="text/css"/>
-${fontManifest}${imageManifest}
+${coverManifest}${fontManifest}${imageManifest}
   </manifest>
   <spine toc="ncx"${ppd}>
     <itemref idref="chapter"/>
