@@ -1,0 +1,10 @@
+{
+  "extName": {
+    "message": "جسر",
+    "description": "Extension name shown in the toolbar and store."
+  },
+  "extDesc": {
+    "message": "جسر: حوِّل أيّ مقال أو ملفّ (md/docx) إلى كتاب كندل نظيف، بعربيّة سليمة وترجمة اختياريّة.",
+    "description": "Extension description shown in the store."
+  }
+}
