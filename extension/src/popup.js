@@ -256,7 +256,16 @@ async function onSend() {
       const l = document.getElementById("loginNow");
       if (l) l.addEventListener("click", (ev) => { ev.preventDefault(); openAmazonLogin(); });
     } else {
-      setStatus("err", msg);
+      // Delivery rides Amazon's own session flow; if it ever fails, the file is
+      // still good — offer the resilient fallback (download + official S2K).
+      setStatus(
+        "err",
+        `${msg}<br><a href="#" id="dlFallback">نزّل الملف</a> وأرسله عبر <a href="#" id="s2kOfficial">«Send to Kindle» الرسمي</a>.`
+      );
+      const d = document.getElementById("dlFallback");
+      if (d) d.addEventListener("click", (ev) => { ev.preventDefault(); onDownload(); });
+      const o = document.getElementById("s2kOfficial");
+      if (o) o.addEventListener("click", (ev) => { ev.preventDefault(); chrome.tabs.create({ url: "https://www.amazon.com/sendtokindle" }); });
     }
   } finally {
     els.sendBtn.disabled = false;
