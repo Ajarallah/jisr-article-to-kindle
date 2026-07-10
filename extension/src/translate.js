@@ -16,10 +16,19 @@
  * host (see manifest host_permissions).
  */
 
+import { fetchWithTimeout } from "./net.js";
+
 const DEFAULT_ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions";
 const DEFAULT_MODEL = "z-ai/glm-5.2";
 const DEFAULT_FALLBACK = "deepseek-ai/deepseek-v4-pro";
+// Batches are bounded by INPUT chars, but the model is bounded by OUTPUT tokens.
+// RTL/Arabic output tokenizes much larger than Latin source, so a batch that is
+// safe for English can overflow the output budget in Arabic — truncating the
+// JSON, which then reads as a "segment count mismatch" and burns every retry.
+// Use a tighter char cap for RTL targets and give the model a generous ceiling.
 const MAX_CHARS_PER_BATCH = 2500;
+const MAX_CHARS_PER_BATCH_RTL = 1400;
+const MAX_OUTPUT_TOKENS = 16384;
 const MAX_ATTEMPTS_PER_MODEL = 3;
 
 const RTL_LANGS = ["arabic", "hebrew", "persian", "urdu"];
@@ -58,11 +67,12 @@ function parseJsonArray(content, expectedLen) {
 }
 
 // One completion attempt against a specific model. Throws with `.retryable`.
-async function complete(segments, targetLang, cfg, model) {
+async function complete(segments, targetLang, cfg, model, signal) {
   let resp;
   try {
-    resp = await fetch(cfg.endpoint || DEFAULT_ENDPOINT, {
+    resp = await fetchWithTimeout(cfg.endpoint || DEFAULT_ENDPOINT, {
       method: "POST",
+      signal,
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.apiKey}` },
       body: JSON.stringify({
         model,
@@ -71,11 +81,16 @@ async function complete(segments, targetLang, cfg, model) {
           { role: "user", content: JSON.stringify(segments) },
         ],
         temperature: 0.2,
-        max_tokens: 8192,
+        max_tokens: MAX_OUTPUT_TOKENS,
       }),
     });
   } catch (e) {
-    const err = new Error("تعذّر الاتصال بخدمة الترجمة — تحقّق من اتصالك.");
+    if (e && e.name === "AbortError") throw e; // user cancel — propagate, don't retry
+    const err = new Error(
+      e && e.name === "TimeoutError"
+        ? "انتهت مهلة الاتصال بخدمة الترجمة — أعد المحاولة."
+        : "تعذّر الاتصال بخدمة الترجمة — تحقّق من اتصالك."
+    );
     err.retryable = true;
     throw err;
   }
@@ -100,7 +115,7 @@ async function complete(segments, targetLang, cfg, model) {
 }
 
 // Try the primary model with retries; on exhaustion fall back to the secondary.
-async function translateBatch(segments, targetLang, cfg) {
+async function translateBatch(segments, targetLang, cfg, signal) {
   const models = [cfg.model || DEFAULT_MODEL, cfg.fallbackModel || DEFAULT_FALLBACK].filter(
     (m, i, a) => m && a.indexOf(m) === i
   );
@@ -108,8 +123,9 @@ async function translateBatch(segments, targetLang, cfg) {
   for (const model of models) {
     for (let attempt = 0; attempt < MAX_ATTEMPTS_PER_MODEL; attempt++) {
       try {
-        return await complete(segments, targetLang, cfg, model);
+        return await complete(segments, targetLang, cfg, model, signal);
       } catch (e) {
+        if (e && e.name === "AbortError") throw e; // user cancel — stop immediately
         lastErr = e;
         if (e.retryable === false) break; // hard error for this model → try fallback
         await sleep(500 * (attempt + 1));
@@ -138,13 +154,13 @@ function collectTextNodes(root, doc) {
   return nodes;
 }
 
-function batchSegments(segments) {
+function batchSegments(segments, maxChars) {
   const batches = [];
   let cur = [];
   let curLen = 0;
   for (const seg of segments) {
     const len = seg.length + 2;
-    if (cur.length && curLen + len > MAX_CHARS_PER_BATCH) {
+    if (cur.length && curLen + len > maxChars) {
       batches.push(cur);
       cur = [];
       curLen = 0;
@@ -157,20 +173,26 @@ function batchSegments(segments) {
 }
 
 /*
- * translateHtml({ title, html, targetLang }, cfg) -> { title, html, lang, dir }
- * cfg: { apiKey, model?, fallbackModel?, endpoint? }
+ * translateHtml({ title, html, targetLang }, cfg, opts?) -> { title, html, lang, dir }
+ * cfg:  { apiKey, model?, fallbackModel?, endpoint? }
+ * opts: { signal?, onProgress?(doneBatches, totalBatches) }
  */
-export async function translateHtml({ title, html, targetLang }, cfg) {
+export async function translateHtml({ title, html, targetLang }, cfg, opts = {}) {
   if (!cfg || !cfg.apiKey) throw new Error("أضف مفتاح الترجمة (NVIDIA) في الإعدادات لتفعيل الترجمة.");
+  const { signal, onProgress } = opts;
 
   const doc = new DOMParser().parseFromString(html, "text/html");
   const nodes = collectTextNodes(doc.body, doc);
   const segments = nodes.map((n) => n.nodeValue);
 
+  const isRtlTarget = RTL_LANGS.includes(targetLang.toLowerCase());
+  const maxChars = isRtlTarget ? MAX_CHARS_PER_BATCH_RTL : MAX_CHARS_PER_BATCH;
   const allSegments = [title || "", ...segments];
-  const batches = batchSegments(allSegments);
+  const batches = batchSegments(allSegments, maxChars);
 
   const translated = [];
+  let done = 0;
+  if (onProgress) onProgress(0, batches.length);
   for (const batch of batches) {
     // Preserve leading/trailing whitespace (models tend to trim it).
     const info = batch.map((s) => ({
@@ -178,8 +200,10 @@ export async function translateHtml({ title, html, targetLang }, cfg) {
       lead: s.match(/^\s*/)[0],
       trail: s.match(/\s*$/)[0],
     }));
-    const out = await translateBatch(info.map((t) => t.core), targetLang, cfg);
+    const out = await translateBatch(info.map((t) => t.core), targetLang, cfg, signal);
     out.forEach((t, i) => translated.push(info[i].lead + t + info[i].trail));
+    done += 1;
+    if (onProgress) onProgress(done, batches.length);
   }
 
   const newTitle = translated[0];
