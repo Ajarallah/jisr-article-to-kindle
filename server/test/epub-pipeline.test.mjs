@@ -212,6 +212,22 @@ test("buildBook: multiple articles → one multi-chapter EPUB with combined TOC"
   assert.match(ch1, /dir="ltr"/, "English chapter stays LTR");
 });
 
+test("language tag is simplified (en-US → en) and U+FFFD is stripped", async () => {
+  const blob = await buildEpub({
+    title: "Region tagged",
+    content: "<p>Clean text� with a bad char.</p>",
+    dir: "ltr",
+    lang: "en-US",
+    url: "https://example.com/x",
+  });
+  const zip = await readZip(blob);
+  const opf = await zip.file("OEBPS/content.opf").async("string");
+  assert.match(opf, /<dc:language>en<\/dc:language>/, "region subtag dropped");
+  const chapter = await zip.file("OEBPS/text/chapter.xhtml").async("string");
+  assert.doesNotMatch(chapter, /�/, "replacement char stripped");
+  assert.match(chapter, /Clean text with a bad char/, "surrounding text intact");
+});
+
 test("LTR article -> no RTL markers", async () => {
   const blob = await buildEpub({
     title: "A Test Title",

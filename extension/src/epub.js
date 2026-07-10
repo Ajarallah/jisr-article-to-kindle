@@ -45,6 +45,16 @@ function escapeXml(s) {
     .replace(/'/g, "&apos;");
 }
 
+// Normalize a BCP-47 language tag for Kindle: lowercase, and drop a region
+// subtag (en-US → en) since Amazon's converter keys off primary-language codes
+// and can reject/mishandle region-tagged values. Keep script subtags (zh-hant).
+function simplifyLang(lang) {
+  const l = String(lang || "").toLowerCase().trim();
+  if (!l) return "";
+  const m = /^([a-z]{2,3})-([a-z]{2})$/.exec(l); // lang-REGION only (not lang-script)
+  return m ? m[1] : l;
+}
+
 function extFromMime(mime) {
   const map = {
     "image/jpeg": "jpg",
@@ -207,8 +217,31 @@ async function normalizeContent(htmlString, baseUrl, embedImages, imgPrefix = ""
   for (const node of bodyChildren) {
     xhtml += serializer.serializeToString(node);
   }
+  // Strip U+FFFD replacement chars (visible "�", usually an upstream encoding
+  // slip — most common after translation).
+  xhtml = xhtml.replace(/�/g, "");
   // XMLSerializer already produces XML-namespaced, self-closed tags.
   return { xhtml, images, headings };
+}
+
+/*
+ * Guard: a chapter that isn't well-formed XML makes Amazon's KF8 converter
+ * silently drop the stylesheet/font link for that file — exactly the Arabic-font
+ * loss we work to prevent. Our construction is well-formed by design; this catches
+ * regressions (a bad epub:type attr, an undeclared entity) loudly instead of
+ * shipping a corrupted book. No-op where DOMParser can't validate XML.
+ */
+function assertWellFormed(xml, label) {
+  if (typeof DOMParser === "undefined") return;
+  let doc;
+  try {
+    doc = new DOMParser().parseFromString(xml, "application/xhtml+xml");
+  } catch (e) {
+    return; // parser unavailable for this type — skip rather than false-fail
+  }
+  if (doc.getElementsByTagName("parsererror").length) {
+    throw new Error(`EPUB build produced invalid XHTML (${label}) — aborting to avoid a corrupted book.`);
+  }
 }
 
 function buildCss(isRtl, hasArabicFont) {
@@ -357,9 +390,9 @@ async function buildEpub(article, opts = {}) {
   const zip = new JSZip();
   const bookId = uuidv4();
   const isRtl = article.dir === "rtl";
-  // Lowercase the language tag: Amazon's Send-to-Kindle rejects case-mismatched
-  // BCP-47 tags (e.g. "AR"), which silently fails the whole send.
-  const lang = (article.lang || (isRtl ? "ar" : "en")).toLowerCase();
+  // Normalize the language tag (lowercase + drop region subtag): Amazon rejects
+  // case-mismatched or region-tagged BCP-47, which silently fails the send.
+  const lang = simplifyLang(article.lang) || (isRtl ? "ar" : "en");
   const dirAttr = isRtl ? "rtl" : "ltr";
   const nowIso = new Date().toISOString().replace(/\.\d+Z$/, "Z");
   const dateIso = nowIso.slice(0, 10);
@@ -432,6 +465,7 @@ async function buildEpub(article, opts = {}) {
   ${xhtml}
 </body>
 </html>`;
+  assertWellFormed(chapter, "chapter.xhtml");
   zip.file("OEBPS/text/chapter.xhtml", chapter);
 
   // 5) nav.xhtml (EPUB3 navigation) — build a real TOC from the article's
@@ -572,7 +606,7 @@ async function buildBook(articles, opts = {}) {
   const embedImages = !!opts.embedImages;
   const anyRtl = articles.some((a) => a.dir === "rtl");
   const bookDir = articles[0].dir === "rtl" ? "rtl" : "ltr";
-  const lang = (articles[0].lang || (bookDir === "rtl" ? "ar" : "en")).toLowerCase();
+  const lang = simplifyLang(articles[0].lang) || (bookDir === "rtl" ? "ar" : "en");
   const bookTitle =
     opts.title ||
     (articles.length === 1 ? articles[0].title : `مجموعة قراءة · ${articles.length} مقالات`);
@@ -605,20 +639,19 @@ async function buildBook(articles, opts = {}) {
   for (let i = 0; i < articles.length; i++) {
     const a = articles[i];
     const cdir = a.dir === "rtl" ? "rtl" : "ltr";
-    const clang = (a.lang || (cdir === "rtl" ? "ar" : "en")).toLowerCase();
+    const clang = simplifyLang(a.lang) || (cdir === "rtl" ? "ar" : "en");
     const { xhtml, images, headings } = await normalizeContent(a.content, a.url || "", embedImages, `c${i}-`);
     for (const img of images) zip.file("OEBPS/" + img.path, img.base64, { base64: true });
     const src = a.url ? `<div class="a2k-meta">${escapeXml(a.url)}</div>` : "";
     const file = `text/chapter${i}.xhtml`;
-    zip.file(
-      "OEBPS/" + file,
-      `<?xml version="1.0" encoding="UTF-8"?>
+    const chapterXml = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="${escapeXml(clang)}" xml:lang="${escapeXml(clang)}" dir="${cdir}">
 <head><meta charset="utf-8"/><title>${escapeXml(a.title)}</title><link rel="stylesheet" type="text/css" href="../styles/style.css"/></head>
 <body dir="${cdir}"><h1 id="ch${i}">${escapeXml(a.title)}</h1>${src}${xhtml}</body>
-</html>`
-    );
+</html>`;
+    assertWellFormed(chapterXml, file);
+    zip.file("OEBPS/" + file, chapterXml);
     chapters.push({ i, file, title: a.title, headings, images });
   }
 

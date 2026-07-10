@@ -78,6 +78,20 @@ test("lazy-loaded images are promoted to a real src before extraction", () => {
   assert.match(r.content, /large\.jpg/, "largest srcset candidate promoted");
 });
 
+// Relative links/images are absolutized; anchor-wrapped thumbnails go full-size.
+test("relative URLs are made absolute and thumbnails swapped to full image", () => {
+  const body =
+    Array.from({ length: 6 }, (_, i) => para(i + 1)).join("") +
+    '<p>See <a href="/other-page">the other page</a>.</p>' +
+    '<a href="/img/full.jpg"><img src="/img/thumb.jpg" alt="x"></a>';
+  const html = `<html lang="en"><body><article><h1>Absolute URL Post Here</h1>${body}</article></body></html>`;
+  const r = extract(html, "https://example.com/blog/post");
+  assert.equal(r.ok, true);
+  assert.match(r.content, /https:\/\/example\.com\/other-page/, "relative link absolutized");
+  assert.match(r.content, /https:\/\/example\.com\/img\/full\.jpg/, "thumbnail swapped to full, absolute");
+  assert.doesNotMatch(r.content, /"\/img\/thumb\.jpg"/, "thumbnail src replaced");
+});
+
 // Mostly-Arabic prose with inline English technical terms → still RTL.
 test("mostly-Arabic with inline English terms → rtl", () => {
   const p =

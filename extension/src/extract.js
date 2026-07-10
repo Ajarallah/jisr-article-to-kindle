@@ -119,10 +119,45 @@
     }
   }
 
+  // Rewrite relative links/images to absolute. We serialize innerHTML and the
+  // EPUB leaves the tab, so a root-relative "/img/x.png" or "../page" would be
+  // dead once opened on Kindle. The DOM getters (el.href/el.src) resolve against
+  // the page's baseURI; write that back. Skip in-page anchors (footnotes) and
+  // data:/javascript:/mailto:.
+  function absolutizeUrls(root) {
+    var as = root.querySelectorAll("a[href]");
+    for (var i = 0; i < as.length; i++) {
+      var h = as[i].getAttribute("href") || "";
+      if (!h || h.charAt(0) === "#" || /^(javascript|mailto|tel):/i.test(h)) continue;
+      try { as[i].setAttribute("href", as[i].href); } catch (e) {}
+    }
+    var imgs = root.querySelectorAll("img[src]");
+    for (var j = 0; j < imgs.length; j++) {
+      var s = imgs[j].getAttribute("src") || "";
+      if (!s || /^data:/i.test(s)) continue;
+      try { imgs[j].setAttribute("src", imgs[j].src); } catch (e) {}
+    }
+  }
+
+  // A thumbnail wrapped in a link to the full image (a > img, link points at an
+  // image file) → use the full-size image. Common on blogs/galleries.
+  function imagesAtFullSize(root) {
+    var imgs = root.querySelectorAll("img");
+    for (var i = 0; i < imgs.length; i++) {
+      var img = imgs[i];
+      var a = img.parentNode;
+      if (!a || a.tagName !== "A" || a.children.length !== 1) continue;
+      var href = a.getAttribute("href") || "";
+      if (/\.(jpe?g|png|gif|webp)(\?|#|$)/i.test(href)) img.setAttribute("src", a.href);
+    }
+  }
+
   // Serialize a region to clean content HTML: remove chrome/interactive, keep flow.
   function serializeRegion(region) {
     var clone = region.cloneNode(true);
     promoteLazyImages(clone);
+    imagesAtFullSize(clone);
+    absolutizeUrls(clone);
     var drop = clone.querySelectorAll(DROP);
     for (var i = drop.length - 1; i >= 0; i--) drop[i].remove();
     var all = clone.querySelectorAll("*");
@@ -159,6 +194,8 @@
   try {
     var documentClone = document.cloneNode(true);
     promoteLazyImages(documentClone);
+    imagesAtFullSize(documentClone);
+    absolutizeUrls(documentClone);
     var reader = new Readability(documentClone, { charThreshold: 250 });
     var article = reader.parse();
     var readText = article && article.textContent ? article.textContent.trim().length : 0;
