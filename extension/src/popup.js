@@ -33,6 +33,44 @@ function clearStatus() {
   els.status.classList.add("hidden");
 }
 
+// Lightweight direction detector for picked regions (extract.js's own detector
+// isn't reachable here). RTL when a meaningful share of letters are RTL.
+function detectDir(text) {
+  const sample = String(text || "").slice(0, 8000);
+  const rtl = (sample.match(/[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿֐-׿]/g) || []).length;
+  const latin = (sample.match(/[A-Za-z]/g) || []).length;
+  if (rtl + latin < 20) return "ltr";
+  return rtl / (rtl + latin) >= 0.3 ? "rtl" : "ltr";
+}
+
+// Adopt a manually-picked region (from pick.js) as the article to send.
+function adoptPicked(picked) {
+  let host = "";
+  try {
+    host = new URL(picked.url).hostname;
+  } catch (e) {
+    host = "";
+  }
+  article = {
+    ok: true,
+    title: (picked.title || "مقال").trim(),
+    content: picked.html,
+    url: picked.url,
+    dir: detectDir(picked.text),
+    siteName: host,
+    byline: "",
+    lang: "",
+    textLength: (picked.text || "").length,
+  };
+  els.title.textContent = article.title;
+  els.title.classList.remove("skeleton");
+  els.title.setAttribute("dir", article.dir);
+  const words = Math.max(1, Math.round(article.textLength / 6));
+  els.meta.textContent = `منطقة مختارة يدويًا · ${words.toLocaleString("ar")} كلمة`;
+  els.sendBtn.disabled = false;
+  els.downloadBtn.disabled = false;
+}
+
 function openAmazonLogin() {
   chrome.tabs.create({ url: settings.amazonDomain || "https://www.amazon.com" });
 }
@@ -273,10 +311,29 @@ if (addListBtn)
 const bundleBtn = document.getElementById("bundleBtn");
 if (bundleBtn)
   bundleBtn.addEventListener("click", () => chrome.tabs.create({ url: chrome.runtime.getURL("src/bundle.html") }));
+const pickBtn = document.getElementById("pickBtn");
+if (pickBtn)
+  pickBtn.addEventListener("click", async () => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab || !tab.id) return;
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["src/pick.js"] });
+    window.close(); // the picker runs on the page; reopen the popup after clicking a region
+  });
 els.sendBtn.addEventListener("click", onSend);
 els.downloadBtn.addEventListener("click", onDownload);
 
+async function loadArticleSource() {
+  // A freshly picked region (from pick.js) wins over auto-extraction.
+  const { a2k_picked } = await chrome.storage.local.get("a2k_picked");
+  if (a2k_picked && a2k_picked.html && Date.now() - a2k_picked.at < 5 * 60 * 1000) {
+    await chrome.storage.local.remove("a2k_picked");
+    adoptPicked(a2k_picked);
+    return;
+  }
+  await extractCurrentArticle();
+}
+
 (async function init() {
   await initSettings();
-  await Promise.all([extractCurrentArticle(), refreshDeliveryInfo()]);
+  await Promise.all([loadArticleSource(), refreshDeliveryInfo()]);
 })();
