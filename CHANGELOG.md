@@ -15,6 +15,17 @@ All notable changes to this project are documented here.
   article's headings instead of a single flat entry.
 - **Lazy-loaded images are captured** — `data-src`/`srcset`/`<noscript>` images
   are resolved before extraction, so image-heavy pages no longer come out blank.
+- **Reading-list bundles** — queue several articles ("أضِف للقائمة") and compile
+  them into one multi-chapter EPUB (a compiled "issue") with a combined TOC.
+- **Send selection only** — when text is selected on the page, send just that.
+- **Manual region picker** — hover-and-click to pick the content area when
+  auto-extraction misses.
+- **Send history** — a local list of what you sent, in Settings, each linking
+  back to its source to resend.
+- **Auto-detect Amazon domain** — finds the marketplace you're signed in to
+  instead of hand-editing the domain.
+- **Footnote popups** — numeric/superscript footnote refs get `epub:type` so
+  supporting readers show a popup (and still work as links elsewhere).
 
 ### Changed
 - **Reliability** — every network request (Amazon delivery, S3 upload,
@@ -33,17 +44,29 @@ All notable changes to this project are documented here.
 - **Toolbar icon** is a simple open-book glyph that stays legible at 16px (the
   previous 16px icon was dense poster art that collapsed into a smudge).
 
+- **Image permission is now per-site** — enabling images requests access to just
+  the current article's origin at send time, not all sites.
+- **Code blocks & tables** are styled and preserved through conversion.
+
 ### Accessibility
 - Status/progress regions announce to screen readers (`role="status"`,
   `aria-live`).
+
+### Removed
+- The dead `server/` prototype (email fallback + legacy STK OAuth + server-side
+  translate) is gone — the product has been a fully serverless extension for
+  several versions. `server/` now holds only the Node test + lint harness. **If
+  you ran the old server, rotate the NVIDIA/OpenROUTER key that was in
+  `server/.env` and delete that file.**
 
 ### Internal
 - Settings (`DEFAULT_SETTINGS`, `sanitizeFilename`, load/save) consolidated into
   a single `src/settings.js`, ending the three-way duplication across popup,
   drop and options.
 - New `src/net.js` (timeout/cancel helper) and first-ever test coverage for the
-  Amazon delivery flow; tolerant CSRF parsing replaces a byte-exact regex. Test
-  count 21 → 32.
+  Amazon delivery flow; tolerant CSRF parsing replaces a byte-exact regex.
+- ESLint flat config + GitHub Actions CI (lint + tests on every push/PR).
+- i18n scaffold (`_locales/ar` default + `_locales/en`).
 
 ## [0.3.0] — 2026-07-07
 

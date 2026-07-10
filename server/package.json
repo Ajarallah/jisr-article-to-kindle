@@ -1,25 +1,19 @@
 {
-  "name": "article-to-kindle-server",
+  "name": "article-to-kindle-tests",
   "version": "0.1.0",
-  "description": "Delivery + translation backend for the Article to Kindle extension.",
+  "description": "Test + lint harness for the Article to Kindle («جسر») extension. The product is a fully serverless MV3 extension under ../extension; this folder only holds Node tests that import the extension modules, the icon generator, and dev tooling.",
   "type": "module",
-  "main": "src/server.js",
+  "private": true,
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "node --watch src/server.js",
     "test": "node --test test/*.test.mjs",
-    "lint": "cd .. && eslint extension/src server/test server/gen-icons.mjs"
+    "lint": "cd .. && eslint extension/src server/test server/gen-icons.mjs",
+    "icons": "node gen-icons.mjs"
   },
   "engines": {
     "node": ">=18"
   },
   "dependencies": {
-    "cheerio": "^1.0.0",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^4.21.2",
-    "jszip": "^3.10.1",
-    "nodemailer": "^6.9.16"
+    "jszip": "^3.10.1"
   },
   "devDependencies": {
     "eslint": "^9.39.4",
