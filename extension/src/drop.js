@@ -72,6 +72,16 @@ async function prepareArticle() {
         model: settings.translationModel,
         fallbackModel: settings.translationFallbackModel,
         endpoint: settings.translationEndpoint,
+      },
+      {
+        onProgress: (done, total) => {
+          if (total > 1) {
+            setStatus(
+              "working",
+              `<span class="spinner"></span>جارٍ الترجمة… ${done.toLocaleString("ar")}/${total.toLocaleString("ar")}`
+            );
+          }
+        },
       }
     );
     art = { ...art, title: out.title || art.title, content: out.html || art.content, dir: out.dir || art.dir, lang: out.lang || art.lang };

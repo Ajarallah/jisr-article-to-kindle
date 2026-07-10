@@ -1,5 +1,6 @@
 import { buildEpub } from "./epub.js";
 import { sendEpubToKindle } from "./deliver.js";
+import { sanitizeFilename } from "./settings.js";
 
 const els = {
   frame: document.getElementById("preview"),
@@ -22,12 +23,6 @@ function esc(s) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
-}
-
-function sanitizeFilename(name) {
-  return (
-    (name || "article").replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 80) || "article"
-  );
 }
 
 // A reader-styled document for the sandboxed iframe. Scripts are disabled by the
@@ -64,7 +59,7 @@ async function onSend() {
   els.downloadBtn.disabled = true;
   try {
     setStatus("working", '<span class="spinner"></span>جارٍ بناء ملفّ EPUB…');
-    const blob = await buildEpub(article);
+    const blob = await buildEpub(article, { embedImages: !!article.embedImages });
     setStatus("working", '<span class="spinner"></span>جارٍ الإرسال إلى كندل…');
     await sendEpubToKindle({ blob, title: article.title, author: article.author || "", domain: article.domain });
     setStatus("ok", "تم الإرسال إلى مكتبة كندل. سيظهر على جهازك خلال دقائق.");
@@ -83,7 +78,7 @@ async function onDownload() {
   els.downloadBtn.disabled = true;
   try {
     setStatus("working", '<span class="spinner"></span>جارٍ بناء ملفّ EPUB…');
-    const blob = await buildEpub(article);
+    const blob = await buildEpub(article, { embedImages: !!article.embedImages });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;

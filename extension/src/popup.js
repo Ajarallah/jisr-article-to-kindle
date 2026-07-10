@@ -94,6 +94,16 @@ async function translateArticle(art, targetLang) {
       model: settings.translationModel,
       fallbackModel: settings.translationFallbackModel,
       endpoint: settings.translationEndpoint,
+    },
+    {
+      onProgress: (done, total) => {
+        if (total > 1) {
+          setStatus(
+            "working",
+            `<span class="spinner"></span>جارٍ الترجمة… ${done.toLocaleString("ar")}/${total.toLocaleString("ar")}`
+          );
+        }
+      },
     }
   );
   return { ...art, title: out.title || art.title, content: out.html || art.content, dir: out.dir || art.dir, lang: out.lang || art.lang };
@@ -184,7 +194,14 @@ async function onPreview() {
         content: art.content,
         dir: art.dir,
         lang: art.lang,
+        // Carry the source URL and image opt-in so the preview builds the SAME
+        // EPUB the popup would (empty dc:source + unresolved image paths, and
+        // silently-dropped images, were the parity bug).
+        url: art.url,
+        byline: art.byline,
+        siteName: art.siteName,
         author: art.byline || art.siteName || "",
+        embedImages: settings.embedImages,
         domain: settings.amazonDomain,
       },
     });
