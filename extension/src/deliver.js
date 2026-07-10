@@ -127,6 +127,38 @@ export async function isSignedIn(domain) {
   return (await checkAuth(domain)).isAuthed;
 }
 
+// Amazon marketplaces that host Send-to-Kindle, most common first.
+export const AMAZON_DOMAINS = [
+  "https://www.amazon.com",
+  "https://www.amazon.co.uk",
+  "https://www.amazon.de",
+  "https://www.amazon.co.jp",
+  "https://www.amazon.fr",
+  "https://www.amazon.it",
+  "https://www.amazon.es",
+  "https://www.amazon.ca",
+  "https://www.amazon.com.au",
+  "https://www.amazon.in",
+  "https://www.amazon.com.br",
+  "https://www.amazon.nl",
+  "https://www.amazon.com.mx",
+  "https://www.amazon.sa",
+  "https://www.amazon.ae",
+];
+
+/*
+ * Find which Amazon marketplace the user is actually signed in to, so we don't
+ * make them hand-edit the domain. Checks candidates concurrently and returns the
+ * first authenticated domain, or null if none (offline / not signed in anywhere).
+ */
+export async function detectAmazonDomain(candidates = AMAZON_DOMAINS) {
+  const checks = candidates.map((d) =>
+    checkAuth(d).then((r) => (r.isAuthed ? d : null)).catch(() => null)
+  );
+  const results = await Promise.all(checks);
+  return results.find(Boolean) || null;
+}
+
 /*
  * Returns the user's registered Kindle devices, or throws with a clear
  * "sign in to Amazon" message. Also serves as a connectivity/login check.

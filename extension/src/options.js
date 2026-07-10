@@ -1,4 +1,5 @@
 import { DEFAULT_SETTINGS, IMAGE_ORIGINS, loadSettings, saveSettings } from "./settings.js";
+import { detectAmazonDomain } from "./deliver.js";
 
 const els = {
   amazonDomain: document.getElementById("amazonDomain"),
@@ -8,6 +9,7 @@ const els = {
   embedImages: document.getElementById("embedImages"),
   saveBtn: document.getElementById("saveBtn"),
   openAmazonBtn: document.getElementById("openAmazonBtn"),
+  detectDomainBtn: document.getElementById("detectDomainBtn"),
   status: document.getElementById("status"),
 };
 
@@ -58,6 +60,22 @@ async function save() {
   });
   setStatus("ok", "تم حفظ الإعدادات.");
 }
+
+els.detectDomainBtn.addEventListener("click", async () => {
+  els.detectDomainBtn.disabled = true;
+  setStatus("working", "جارٍ البحث عن نطاق أمازون الذي سجّلت الدخول فيه…");
+  try {
+    const found = await detectAmazonDomain();
+    if (found) {
+      els.amazonDomain.value = found;
+      setStatus("ok", `وُجد: ${found} — اضغط «حفظ الإعدادات» لاعتماده.`);
+    } else {
+      setStatus("err", "لم أجد نطاقًا مسجّلًا. سجّل الدخول في أمازون أولًا.");
+    }
+  } finally {
+    els.detectDomainBtn.disabled = false;
+  }
+});
 
 els.saveBtn.addEventListener("click", save);
 els.openAmazonBtn.addEventListener("click", () => {
