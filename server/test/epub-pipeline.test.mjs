@@ -80,6 +80,43 @@ test("images are stripped by default (text-only, no fetch, no opt-in)", async ()
   assert.equal(Object.keys(zip.files).some((p) => p.startsWith("OEBPS/images/")), false);
 });
 
+test("Arabic EPUB quality: RTL heading CSS, LTR code, lowercase lang, dc:date, TOC, valid XHTML", async () => {
+  const blob = await buildEpub({
+    title: "مقال عن الشيفرة",
+    content:
+      '<h2 id="intro">مقدّمة</h2>' +
+      "<p>فقرة عربية فيها مصطلح token ورمز.</p>" +
+      "<h2>القسم الثاني</h2>" +
+      "<pre><code>const x = (a + b);</code></pre>" +
+      '<p>انظر <a href="#intro">المقدّمة</a>.</p>',
+    dir: "rtl",
+    lang: "AR", // uppercase on purpose — must be normalized
+    url: "https://example.com/ar-code",
+    byline: "الكاتب",
+  });
+  const zip = await readZip(blob);
+
+  const css = await zip.file("OEBPS/styles/style.css").async("string");
+  assert.match(css, /h1, h2, h3 \{ direction: rtl/, "headings re-declare RTL");
+  assert.match(css, /letter-spacing: normal/, "no letter-spacing that would break joining");
+  assert.match(css, /pre, code, samp, kbd \{ direction: ltr/, "code isolated LTR");
+
+  const opf = await zip.file("OEBPS/content.opf").async("string");
+  assert.match(opf, /<dc:language>ar<\/dc:language>/, "lang lowercased");
+  assert.match(opf, /<dc:date>/, "date metadata present");
+
+  const chapter = await zip.file("OEBPS/text/chapter.xhtml").async("string");
+  assert.match(chapter, /<pre dir="ltr"|<code dir="ltr"/, "code marked dir=ltr");
+  assert.match(chapter, /id="intro"/, "anchor id preserved");
+  // Chapter must be well-formed XML (malformed XHTML makes Amazon drop the font).
+  const parsed = new dom.window.DOMParser().parseFromString(chapter, "application/xml");
+  assert.equal(parsed.getElementsByTagName("parsererror").length, 0, "chapter is well-formed XML");
+
+  const nav = await zip.file("OEBPS/nav.xhtml").async("string");
+  assert.match(nav, /chapter\.xhtml#intro/, "TOC links the id'd heading");
+  assert.match(nav, /chapter\.xhtml#sec-/, "TOC links the auto-id'd heading");
+});
+
 test("LTR article -> no RTL markers", async () => {
   const blob = await buildEpub({
     title: "A Test Title",

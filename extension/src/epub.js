@@ -95,14 +95,36 @@ async function normalizeContent(htmlString, baseUrl, embedImages) {
     }
   }
 
-  // Strip attributes that break XHTML or are unsafe on e-readers.
+  // Strip attributes that break XHTML or are unsafe on e-readers. Keep `id`:
+  // intra-document anchors (footnotes/endnotes, section links) need their
+  // targets, and the TOC below links to heading ids.
   doc.querySelectorAll("*").forEach((el) => {
     [...el.attributes].forEach((attr) => {
       const n = attr.name.toLowerCase();
-      if (n.startsWith("on") || n === "style" || n === "class" || n === "id") {
+      if (n.startsWith("on") || n === "style" || n === "class") {
         el.removeAttribute(attr.name);
       }
     });
+  });
+
+  // Code is left-to-right regardless of document direction. Marking it dir="ltr"
+  // stops the bidi algorithm from flipping punctuation/brackets when code or
+  // inline English sits inside Arabic prose — a real corruption source.
+  doc.querySelectorAll("pre, code, samp, kbd").forEach((el) => el.setAttribute("dir", "ltr"));
+
+  // Collect headings for a navigable TOC; give each a stable id to link to.
+  const headings = [];
+  let hIndex = 0;
+  doc.querySelectorAll("h1, h2, h3").forEach((h) => {
+    const text = (h.textContent || "").trim();
+    if (!text) return;
+    let id = h.getAttribute("id");
+    if (!id) {
+      id = "sec-" + hIndex;
+      h.setAttribute("id", id);
+    }
+    hIndex += 1;
+    headings.push({ id, level: Number(h.tagName[1]) || 2, text });
   });
 
   // Serialize body as XHTML.
@@ -113,7 +135,7 @@ async function normalizeContent(htmlString, baseUrl, embedImages) {
     xhtml += serializer.serializeToString(node);
   }
   // XMLSerializer already produces XML-namespaced, self-closed tags.
-  return { xhtml, images };
+  return { xhtml, images, headings };
 }
 
 function buildCss(isRtl, hasArabicFont) {
@@ -132,18 +154,24 @@ function buildCss(isRtl, hasArabicFont) {
     isRtl && hasArabicFont
       ? `"A2K Arabic", "Noto Naskh Arabic", serif`
       : "serif";
+  // Arabic needs more leading (ascenders + optional marks stack tall) and must
+  // re-declare direction on headings — some readers revert them to LTR when they
+  // only inherit it. Never set letter-spacing on Arabic: it breaks letter joining.
+  const lineHeight = isRtl ? "1.85" : "1.7";
   const rtlRules = isRtl
     ? `body { direction: rtl; text-align: right; }
+h1, h2, h3 { direction: rtl; text-align: right; }
 `
     : "";
   return `${fontFace}html, body { margin: 0; padding: 0; }
-body { font-family: ${bodyFont}; line-height: 1.7; padding: 1em; }
+body { font-family: ${bodyFont}; line-height: ${lineHeight}; padding: 1em; letter-spacing: normal; }
 ${rtlRules}h1, h2, h3 { line-height: 1.35; }
 img { max-width: 100%; height: auto; }
 figure { margin: 1em 0; text-align: center; }
 figcaption { font-size: 0.85em; color: #555; }
 blockquote { margin: 1em; padding-inline-start: 1em; border-inline-start: 3px solid #ccc; }
-pre { white-space: pre-wrap; word-wrap: break-word; }
+pre, code, samp, kbd { direction: ltr; unicode-bidi: isolate; }
+pre { white-space: pre-wrap; word-wrap: break-word; text-align: left; }
 a { color: inherit; text-decoration: underline; }
 .a2k-meta { color: #666; font-size: 0.9em; margin-bottom: 1.5em; }
 `;
@@ -180,12 +208,14 @@ async function buildEpub(article, opts = {}) {
   const zip = new JSZip();
   const bookId = uuidv4();
   const isRtl = article.dir === "rtl";
-  const lang =
-    article.lang || (isRtl ? "ar" : "en");
+  // Lowercase the language tag: Amazon's Send-to-Kindle rejects case-mismatched
+  // BCP-47 tags (e.g. "AR"), which silently fails the whole send.
+  const lang = (article.lang || (isRtl ? "ar" : "en")).toLowerCase();
   const dirAttr = isRtl ? "rtl" : "ltr";
   const nowIso = new Date().toISOString().replace(/\.\d+Z$/, "Z");
+  const dateIso = nowIso.slice(0, 10);
 
-  const { xhtml, images } = await normalizeContent(
+  const { xhtml, images, headings } = await normalizeContent(
     article.content,
     article.url || "",
     embedImages
@@ -249,7 +279,15 @@ async function buildEpub(article, opts = {}) {
 </html>`;
   zip.file("OEBPS/text/chapter.xhtml", chapter);
 
-  // 5) nav.xhtml (EPUB3 navigation)
+  // 5) nav.xhtml (EPUB3 navigation) — build a real TOC from the article's
+  // headings so long reads are navigable, not a single flat entry.
+  const navItems = [
+    `<li><a href="text/chapter.xhtml">${escapeXml(article.title)}</a></li>`,
+  ].concat(
+    headings.map(
+      (h) => `<li><a href="text/chapter.xhtml#${escapeXml(h.id)}">${escapeXml(h.text)}</a></li>`
+    )
+  );
   const nav = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="${escapeXml(
@@ -260,7 +298,7 @@ async function buildEpub(article, opts = {}) {
   <nav epub:type="toc" id="toc">
     <h1>Contents</h1>
     <ol>
-      <li><a href="text/chapter.xhtml">${escapeXml(article.title)}</a></li>
+      ${navItems.join("\n      ")}
     </ol>
   </nav>
 </body>
@@ -279,6 +317,14 @@ async function buildEpub(article, opts = {}) {
       <navLabel><text>${escapeXml(article.title)}</text></navLabel>
       <content src="text/chapter.xhtml"/>
     </navPoint>
+${headings
+    .map(
+      (h, i) =>
+        `    <navPoint id="np${i}" playOrder="${i + 2}"><navLabel><text>${escapeXml(
+          h.text
+        )}</text></navLabel><content src="text/chapter.xhtml#${escapeXml(h.id)}"/></navPoint>`
+    )
+    .join("\n")}
   </navMap>
 </ncx>`;
   zip.file("OEBPS/toc.ncx", ncx);
@@ -306,6 +352,7 @@ async function buildEpub(article, opts = {}) {
     <dc:language>${escapeXml(lang)}</dc:language>
     <dc:creator>${escapeXml(article.byline || article.siteName || "Article to Kindle")}</dc:creator>
     <dc:source>${escapeXml(article.url || "")}</dc:source>
+    <dc:date>${escapeXml(article.date || dateIso)}</dc:date>
     <meta property="dcterms:modified">${nowIso}</meta>
   </metadata>
   <manifest>
