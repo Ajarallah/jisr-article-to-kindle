@@ -4,6 +4,7 @@ import { sendEpubToKindle, checkAuth } from "./deliver.js";
 import { loadSettings, sanitizeFilename, originPattern } from "./settings.js";
 import { addHistoryEntry } from "./history.js";
 import { addToList } from "./readinglist.js";
+import { annotateHtml } from "./glossary.js";
 
 const els = {
   title: document.getElementById("articleTitle"),
@@ -14,6 +15,7 @@ const els = {
   selectionToggle: document.getElementById("selectionToggle"),
   selectionLabel: document.getElementById("selectionLabel"),
   bilingualToggle: document.getElementById("bilingualToggle"),
+  glossaryToggle: document.getElementById("glossaryToggle"),
   targetLang: document.getElementById("targetLang"),
   deliveryInfo: document.getElementById("deliveryInfo"),
   sendBtn: document.getElementById("sendBtn"),
@@ -193,6 +195,16 @@ async function prepareArticle(embedImages) {
   if (els.translateToggle.checked) {
     setStatus("working", '<span class="spinner"></span>جارٍ الترجمة بالذكاء الاصطناعي…');
     art = await translateArticle(base, els.targetLang.value);
+  }
+  if (els.glossaryToggle && els.glossaryToggle.checked) {
+    if (!settings.translationKey) throw new Error("أضف مفتاح NVIDIA في الإعدادات لتفعيل المسرد.");
+    setStatus("working", '<span class="spinner"></span>جارٍ إعداد المسرد الدراسي…');
+    const annotated = await annotateHtml(
+      art.content,
+      { apiKey: settings.translationKey, model: settings.translationModel, endpoint: settings.translationEndpoint },
+      { targetLang: els.targetLang.value }
+    );
+    art = { ...art, content: annotated };
   }
   setStatus("working", '<span class="spinner"></span>جارٍ بناء ملف EPUB…');
   const blob = await buildEpub(art, { embedImages });
