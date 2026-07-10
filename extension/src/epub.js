@@ -6,13 +6,12 @@
  *  - EPUB3 with a nav.xhtml + a legacy toc.ncx for older Kindle firmware.
  *  - RTL articles get page-progression-direction="rtl" and dir="rtl" so
  *    Arabic renders correctly on Kindle.
- *  - Images referenced in the article are fetched and embedded ONLY when the
- *    image host is covered by an active host permission (or serves permissive
- *    CORS). The extension does not currently request the optional all-sites
- *    permission, so for most sites images cannot be fetched and are dropped —
- *    the EPUB is text-only. Images that fail to fetch are dropped rather than
- *    left as dead remote links. (Enabling embedding = wire chrome.permissions
- *    .request for the declared optional_host_permissions; see plans/README.md.)
+ *  - Images are embedded only when the caller passes { embedImages: true },
+ *    which the options page gates behind an explicit opt-in that requests the
+ *    optional all-sites host permission (see settings.js / options.js). When
+ *    off (the default) images are stripped and the EPUB is text-only. Even when
+ *    on, an image that fails to fetch is dropped rather than left as a dead
+ *    remote link.
  */
 
 function uuidv4() {
@@ -59,13 +58,17 @@ async function blobToBase64(blob) {
  * Turn the Readability HTML string into well-formed XHTML body content,
  * embedding images into the zip. Returns { xhtml, images:[{path,base64,mime}] }.
  */
-async function normalizeContent(htmlString, baseUrl) {
+async function normalizeContent(htmlString, baseUrl, embedImages) {
   const doc = new DOMParser().parseFromString(htmlString, "text/html");
   const images = [];
   let imgIndex = 0;
 
   const imgEls = Array.from(doc.querySelectorAll("img"));
-  for (const img of imgEls) {
+  // Text-only unless the user opted in (and granted the host permission).
+  if (!embedImages) {
+    imgEls.forEach((img) => img.remove());
+  }
+  for (const img of embedImages ? imgEls : []) {
     let src = img.getAttribute("src") || img.getAttribute("data-src") || "";
     if (!src) {
       img.remove();
@@ -169,10 +172,11 @@ async function loadArabicFontBase64() {
  * Public API. article = object from extract.js (possibly with translated
  * title/content already substituted).
  */
-async function buildEpub(article) {
+async function buildEpub(article, opts = {}) {
   if (typeof JSZip === "undefined") {
     throw new Error("JSZip not loaded");
   }
+  const embedImages = !!opts.embedImages;
   const zip = new JSZip();
   const bookId = uuidv4();
   const isRtl = article.dir === "rtl";
@@ -183,7 +187,8 @@ async function buildEpub(article) {
 
   const { xhtml, images } = await normalizeContent(
     article.content,
-    article.url || ""
+    article.url || "",
+    embedImages
   );
 
   // Embed an Arabic font for RTL articles — the differentiator. Without a

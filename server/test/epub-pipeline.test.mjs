@@ -63,6 +63,23 @@ test("real article -> valid EPUB3 (Arabic RTL)", async () => {
   assert.ok(zip.file("OEBPS/toc.ncx"), "toc.ncx exists");
 });
 
+test("images are stripped by default (text-only, no fetch, no opt-in)", async () => {
+  const blob = await buildEpub({
+    title: "With an image",
+    content: '<p>Before.</p><img src="https://example.com/pic.png" alt="x"/><p>After.</p>',
+    dir: "ltr",
+    lang: "en",
+    url: "https://example.com/a",
+  });
+  const zip = await readZip(blob);
+  const chapter = await zip.file("OEBPS/text/chapter.xhtml").async("string");
+  assert.doesNotMatch(chapter, /<img/, "no img element survives");
+  assert.match(chapter, /Before\./);
+  assert.match(chapter, /After\./);
+  // No image parts were added to the package.
+  assert.equal(Object.keys(zip.files).some((p) => p.startsWith("OEBPS/images/")), false);
+});
+
 test("LTR article -> no RTL markers", async () => {
   const blob = await buildEpub({
     title: "A Test Title",
