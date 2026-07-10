@@ -1,6 +1,7 @@
 import { buildEpub } from "./epub.js";
 import { translateHtml } from "./translate.js";
 import { sendEpubToKindle, isSignedIn } from "./deliver.js";
+import { loadSettings, sanitizeFilename } from "./settings.js";
 
 const els = {
   title: document.getElementById("articleTitle"),
@@ -18,16 +19,6 @@ const els = {
 let article = null;
 let settings = null;
 
-const DEFAULT_SETTINGS = {
-  amazonDomain: "https://www.amazon.com",
-  translateByDefault: false,
-  defaultTargetLang: "Arabic",
-  translationKey: "",
-  translationModel: "z-ai/glm-5.2",
-  translationFallbackModel: "deepseek-ai/deepseek-v4-pro",
-  translationEndpoint: "https://integrate.api.nvidia.com/v1/chat/completions",
-};
-
 function setStatus(kind, html) {
   els.status.className = "status " + kind;
   els.status.innerHTML = html;
@@ -37,19 +28,12 @@ function clearStatus() {
   els.status.classList.add("hidden");
 }
 
-function sanitizeFilename(name) {
-  return (
-    (name || "article").replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 80) || "article"
-  );
-}
-
 function openAmazonLogin() {
   chrome.tabs.create({ url: settings.amazonDomain || "https://www.amazon.com" });
 }
 
-async function loadSettings() {
-  const stored = await chrome.storage.sync.get(DEFAULT_SETTINGS);
-  settings = { ...DEFAULT_SETTINGS, ...stored };
+async function initSettings() {
+  settings = await loadSettings();
   els.translateToggle.checked = !!settings.translateByDefault;
   els.translateOptions.classList.toggle("hidden", !settings.translateByDefault);
   if (settings.defaultTargetLang) els.targetLang.value = settings.defaultTargetLang;
@@ -122,7 +106,7 @@ async function prepareArticle() {
     art = await translateArticle(article, els.targetLang.value);
   }
   setStatus("working", '<span class="spinner"></span>جارٍ بناء ملف EPUB…');
-  const blob = await buildEpub(art);
+  const blob = await buildEpub(art, { embedImages: settings.embedImages });
   return { art, blob };
 }
 
@@ -223,6 +207,6 @@ els.sendBtn.addEventListener("click", onSend);
 els.downloadBtn.addEventListener("click", onDownload);
 
 (async function init() {
-  await loadSettings();
+  await initSettings();
   await Promise.all([extractCurrentArticle(), refreshDeliveryInfo()]);
 })();
