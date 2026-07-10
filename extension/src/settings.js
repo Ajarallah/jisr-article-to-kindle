@@ -19,9 +19,18 @@ export const DEFAULT_SETTINGS = {
   embedImages: false,
 };
 
-// Origins requested (behind the embedImages opt-in) so epub.js can fetch and
-// embed <img> assets from any article host. Mirrors optional_host_permissions.
-export const IMAGE_ORIGINS = ["https://*/*"];
+// Build a single-origin match pattern ("https://host/*") for a page URL, so the
+// image-embed opt-in can request just that site's images instead of all sites.
+// Returns null for non-http(s) URLs (nothing to request).
+export function originPattern(url) {
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "https:" && u.protocol !== "http:") return null;
+    return `${u.protocol}//${u.host}/*`;
+  } catch {
+    return null;
+  }
+}
 
 /*
  * Load merged settings. Reads preferences from sync and the key from local.

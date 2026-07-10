@@ -1,7 +1,7 @@
 import { buildEpub } from "./epub.js";
 import { translateHtml } from "./translate.js";
 import { sendEpubToKindle, checkAuth } from "./deliver.js";
-import { loadSettings, sanitizeFilename } from "./settings.js";
+import { loadSettings, sanitizeFilename, originPattern } from "./settings.js";
 
 const els = {
   title: document.getElementById("articleTitle"),
@@ -112,14 +112,29 @@ async function translateArticle(art, targetLang) {
   return { ...art, title: out.title || art.title, content: out.html || art.content, dir: out.dir || art.dir, lang: out.lang || art.lang };
 }
 
-async function prepareArticle() {
+// If the user wants images, request permission for JUST this article's origin
+// (not all sites). Runs inside the send/download click gesture and uses the
+// already-known article URL, so no async precedes the request. Returns whether
+// images may be embedded.
+async function ensureImagePermission() {
+  if (!settings.embedImages) return false;
+  const pattern = originPattern(article && article.url);
+  if (!pattern) return false;
+  try {
+    return await chrome.permissions.request({ origins: [pattern] });
+  } catch {
+    return false;
+  }
+}
+
+async function prepareArticle(embedImages) {
   let art = article;
   if (els.translateToggle.checked) {
     setStatus("working", '<span class="spinner"></span>جارٍ الترجمة بالذكاء الاصطناعي…');
     art = await translateArticle(article, els.targetLang.value);
   }
   setStatus("working", '<span class="spinner"></span>جارٍ بناء ملف EPUB…');
-  const blob = await buildEpub(art, { embedImages: settings.embedImages });
+  const blob = await buildEpub(art, { embedImages });
   return { art, blob };
 }
 
@@ -128,7 +143,8 @@ async function onSend() {
   els.sendBtn.disabled = true;
   els.downloadBtn.disabled = true;
   try {
-    const { art, blob } = await prepareArticle();
+    const embedImages = await ensureImagePermission();
+    const { art, blob } = await prepareArticle(embedImages);
     setStatus("working", '<span class="spinner"></span>جارٍ الإرسال إلى كندل…');
     await sendEpubToKindle({
       blob,
@@ -161,7 +177,8 @@ async function onDownload() {
   els.sendBtn.disabled = true;
   els.downloadBtn.disabled = true;
   try {
-    const { art, blob } = await prepareArticle();
+    const embedImages = await ensureImagePermission();
+    const { art, blob } = await prepareArticle(embedImages);
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -186,6 +203,7 @@ async function onPreview() {
   els.sendBtn.disabled = true;
   els.downloadBtn.disabled = true;
   try {
+    const embedImages = await ensureImagePermission();
     let art = article;
     if (els.translateToggle.checked) {
       setStatus("working", '<span class="spinner"></span>جارٍ الترجمة بالذكاء الاصطناعي…');
@@ -204,7 +222,7 @@ async function onPreview() {
         byline: art.byline,
         siteName: art.siteName,
         author: art.byline || art.siteName || "",
-        embedImages: settings.embedImages,
+        embedImages,
         domain: settings.amazonDomain,
       },
     });

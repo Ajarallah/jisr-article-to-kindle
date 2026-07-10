@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS, IMAGE_ORIGINS, loadSettings, saveSettings } from "./settings.js";
+import { DEFAULT_SETTINGS, loadSettings, saveSettings } from "./settings.js";
 import { detectAmazonDomain } from "./deliver.js";
 
 const els = {
@@ -25,25 +25,10 @@ async function load() {
   els.translationKey.value = s.translationKey || "";
   els.translateByDefault.checked = !!s.translateByDefault;
   els.defaultTargetLang.value = s.defaultTargetLang || DEFAULT_SETTINGS.defaultTargetLang;
-  // Reflect the *actual* permission, not just the stored flag: the user may have
-  // revoked it from Chrome's extension settings behind our back.
-  const granted = await chrome.permissions.contains({ origins: IMAGE_ORIGINS });
-  els.embedImages.checked = !!s.embedImages && granted;
+  // Just a default preference now — the actual per-site permission is requested
+  // from the popup at send time (only that article's origin, never all sites).
+  els.embedImages.checked = !!s.embedImages;
 }
-
-// Requesting/removing the host permission must happen in the change handler so it
-// runs inside the user gesture (Chrome rejects permission requests otherwise).
-els.embedImages.addEventListener("change", async () => {
-  if (els.embedImages.checked) {
-    const granted = await chrome.permissions.request({ origins: IMAGE_ORIGINS });
-    if (!granted) {
-      els.embedImages.checked = false;
-      setStatus("err", "لم يُمنح الإذن، فلن تُضمَّن الصور.");
-    }
-  } else {
-    await chrome.permissions.remove({ origins: IMAGE_ORIGINS });
-  }
-});
 
 async function save() {
   let domain = (els.amazonDomain.value.trim() || DEFAULT_SETTINGS.amazonDomain).replace(/\/$/, "");
