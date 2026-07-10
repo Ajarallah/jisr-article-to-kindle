@@ -94,7 +94,9 @@ code { background: rgba(22, 24, 29, 0.05); padding: 1px 6px; border-radius: 5px;
 .translate-options { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--hair); display: flex; flex-direction: column; gap: 4px; }
 .field { display: flex; align-items: center; gap: 10px; }
 .field-label { color: var(--muted); min-width: 44px; font-size: 12.5px; }
-select { flex: 1; padding: 9px 11px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--card-2); font-size: 14px; color: var(--text); font-family: inherit; cursor: pointer; transition: border-color 0.15s var(--ease); }
+select { flex: 1; padding: 9px 12px; padding-inline-end: 34px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background-color: var(--card-2); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='%23697086' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: left 12px center; appearance: none; -webkit-appearance: none; text-align: start; font-size: 14px; color: var(--text); font-family: inherit; cursor: pointer; transition: border-color 0.15s var(--ease); }
+.field-label { display: inline-flex; align-items: center; gap: 7px; }
+.opt-ic { width: 16px; height: 16px; flex: none; stroke-width: 1.8; }
 select:hover { border-color: var(--accent); }
 select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
