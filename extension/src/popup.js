@@ -1,6 +1,6 @@
 import { buildEpub } from "./epub.js";
 import { translateHtml } from "./translate.js";
-import { sendEpubToKindle, isSignedIn } from "./deliver.js";
+import { sendEpubToKindle, checkAuth } from "./deliver.js";
 import { loadSettings, sanitizeFilename } from "./settings.js";
 
 const els = {
@@ -42,9 +42,12 @@ async function initSettings() {
 // Show whether the user is signed in to Amazon (delivery is via their session).
 async function refreshDeliveryInfo() {
   els.deliveryInfo.textContent = "…";
-  const ok = await isSignedIn(settings.amazonDomain);
-  if (ok) {
+  const { isAuthed, offline } = await checkAuth(settings.amazonDomain);
+  if (isAuthed) {
     els.deliveryInfo.textContent = "حساب أمازون ✓";
+  } else if (offline) {
+    // Reached nothing — don't send an offline user to a login page.
+    els.deliveryInfo.textContent = "لا يوجد اتصال بالإنترنت";
   } else {
     els.deliveryInfo.innerHTML = '<a href="#" id="amazonLoginLink">سجّل الدخول في أمازون ←</a>';
     const link = document.getElementById("amazonLoginLink");
