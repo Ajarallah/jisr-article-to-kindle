@@ -92,6 +92,19 @@ test("relative URLs are made absolute and thumbnails swapped to full image", () 
   assert.doesNotMatch(r.content, /"\/img\/thumb\.jpg"/, "thumbnail src replaced");
 });
 
+// Author + publish date come from meta / JSON-LD.
+test("extracts author and publish date from metadata", () => {
+  const paras = Array.from({ length: 6 }, (_, i) => para(i + 1)).join("");
+  const html = `<html lang="en"><head>
+    <meta name="author" content="Jane Doe">
+    <meta property="article:published_time" content="2025-03-14T10:00:00Z">
+  </head><body><article><h1>A Dated Article Title Here</h1>${paras}</article></body></html>`;
+  const r = extract(html, "https://example.com/dated");
+  assert.equal(r.ok, true);
+  assert.equal(r.byline, "Jane Doe");
+  assert.equal(r.date, "2025-03-14");
+});
+
 // Mostly-Arabic prose with inline English technical terms → still RTL.
 test("mostly-Arabic with inline English terms → rtl", () => {
   const p =

@@ -191,6 +191,51 @@
     return (doc.title || "Untitled").trim();
   }
 
+  // Parse the page's JSON-LD once; return the first object that looks like an
+  // Article (has datePublished/author/headline).
+  function jsonLd(doc) {
+    var scripts = doc.querySelectorAll('script[type="application/ld+json"]');
+    for (var i = 0; i < scripts.length; i++) {
+      try {
+        var data = JSON.parse(scripts[i].textContent || "{}");
+        var arr = Array.isArray(data) ? data : data["@graph"] ? data["@graph"] : [data];
+        for (var j = 0; j < arr.length; j++) {
+          var o = arr[j];
+          if (o && (o.datePublished || o.author || o.headline)) return o;
+        }
+      } catch (e) {}
+    }
+    return null;
+  }
+
+  function metaAuthor(doc, ld) {
+    var m = doc.querySelector('meta[name="author"], meta[property="article:author"]');
+    if (m && m.content && m.content.trim()) return m.content.trim();
+    if (ld && ld.author) {
+      var a = ld.author;
+      if (typeof a === "string") return a.trim();
+      if (a.name) return String(a.name).trim();
+      if (Array.isArray(a) && a[0] && a[0].name) return String(a[0].name).trim();
+    }
+    var rel = doc.querySelector('[rel="author"]');
+    if (rel && rel.textContent.trim()) return rel.textContent.trim();
+    return "";
+  }
+
+  function metaDate(doc, ld) {
+    var raw = "";
+    var m = doc.querySelector('meta[property="article:published_time"], meta[name="date"], meta[itemprop="datePublished"]');
+    if (m && m.content) raw = m.content;
+    if (!raw && ld && ld.datePublished) raw = String(ld.datePublished);
+    if (!raw) {
+      var t = doc.querySelector("time[datetime]");
+      if (t) raw = t.getAttribute("datetime") || "";
+    }
+    if (!raw) return "";
+    var d = new Date(raw);
+    return isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
+  }
+
   try {
     var documentClone = document.cloneNode(true);
     promoteLazyImages(documentClone);
@@ -240,10 +285,12 @@
         ? contentDir
         : document.documentElement.getAttribute("dir") || contentDir;
 
+    var ld = jsonLd(document);
     return {
       ok: true,
       title: (title || "Untitled").trim(),
-      byline: byline || "",
+      byline: (byline || metaAuthor(document, ld)) || "",
+      date: metaDate(document, ld),
       siteName: siteName || location.hostname,
       lang: htmlLang,
       dir: dir === "rtl" ? "rtl" : "ltr",

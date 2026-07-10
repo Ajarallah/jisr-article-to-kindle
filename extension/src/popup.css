@@ -184,3 +184,9 @@ select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   margin-inline-end: 7px;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Editable title + author (edit before send) */
+#articleTitle[contenteditable="true"] { outline: none; border-bottom: 1px dashed var(--line, #d7dade); padding-bottom: 2px; }
+#articleTitle[contenteditable="true"]:focus { border-bottom-color: var(--accent); }
+.author-input { width: 100%; margin-top: 8px; padding: 6px 8px; border: 1px solid var(--line, #d7dade); border-radius: 8px; font: inherit; background: transparent; color: inherit; box-sizing: border-box; }
+.author-input:focus { outline: none; border-color: var(--accent); }

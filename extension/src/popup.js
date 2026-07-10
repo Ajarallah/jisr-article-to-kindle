@@ -9,6 +9,7 @@ import { annotateHtml } from "./glossary.js";
 const els = {
   title: document.getElementById("articleTitle"),
   meta: document.getElementById("articleMeta"),
+  authorInput: document.getElementById("authorInput"),
   translateToggle: document.getElementById("translateToggle"),
   translateOptions: document.getElementById("translateOptions"),
   selectionRow: document.getElementById("selectionRow"),
@@ -72,6 +73,7 @@ function adoptPicked(picked) {
   els.meta.textContent = `منطقة مختارة يدويًا · ${words.toLocaleString("ar")} كلمة`;
   els.sendBtn.disabled = false;
   els.downloadBtn.disabled = false;
+  enableEditing();
 }
 
 function openAmazonLogin() {
@@ -128,6 +130,7 @@ async function extractCurrentArticle() {
     els.meta.textContent = bits.join(" · ");
     els.sendBtn.disabled = false;
     els.downloadBtn.disabled = false;
+    enableEditing();
     // Offer "send selection only" when the user had text selected on the page.
     if (article.selection && article.selection.text) {
       const selWords = Math.max(1, Math.round(article.selection.text.length / 6));
@@ -140,13 +143,28 @@ async function extractCurrentArticle() {
   }
 }
 
-// The article to actually build/send: the on-page selection when the user asked
-// for "selection only", otherwise the full extracted article.
-function activeArticle() {
-  if (els.selectionToggle.checked && article && article.selection) {
-    return { ...article, content: article.selection.html };
+// Let the user edit the title/author before sending (title is contenteditable,
+// author is an input). Called once the article loads.
+function enableEditing() {
+  els.title.setAttribute("contenteditable", "true");
+  els.title.setAttribute("spellcheck", "false");
+  if (els.authorInput) {
+    els.authorInput.value = (article && article.byline) || "";
+    els.authorInput.classList.remove("hidden");
   }
-  return article;
+}
+
+// The article to actually build/send: the on-page selection when the user asked
+// for "selection only", otherwise the full extracted article — with the user's
+// edited title/author applied.
+function activeArticle() {
+  let a = article;
+  if (els.selectionToggle.checked && article && article.selection) {
+    a = { ...article, content: article.selection.html };
+  }
+  const editedTitle = (els.title.textContent || "").trim();
+  const editedAuthor = els.authorInput ? els.authorInput.value.trim() : "";
+  return { ...a, title: editedTitle || a.title, byline: editedAuthor || a.byline };
 }
 
 async function translateArticle(art, targetLang) {
