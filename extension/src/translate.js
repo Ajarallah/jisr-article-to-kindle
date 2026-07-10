@@ -206,6 +206,23 @@ export async function translateHtml({ title, html, targetLang }, cfg, opts = {})
     if (onProgress) onProgress(done, batches.length);
   }
 
+  // Structural gate: batching already enforces a 1:1 segment count, so structure
+  // is preserved by construction. The remaining failure is the model BLANKING
+  // segments (returns "" for real text) — invisible in translate mode, but a
+  // glaring gap in bilingual mode. If too many non-trivial segments came back
+  // empty, fail loudly so the user retries rather than getting a half-empty book.
+  let sourceNonEmpty = 0;
+  let lost = 0;
+  for (let i = 0; i < allSegments.length; i++) {
+    if ((allSegments[i] || "").trim().length > 1) {
+      sourceNonEmpty += 1;
+      if (!(translated[i] || "").trim()) lost += 1;
+    }
+  }
+  if (sourceNonEmpty >= 5 && lost / sourceNonEmpty > 0.15) {
+    throw new Error("الترجمة أسقطت أجزاءً كثيرة من النص. أعد المحاولة.");
+  }
+
   const newTitle = translated[0];
   const bodyTranslations = translated.slice(1);
   nodes.forEach((n, i) => {

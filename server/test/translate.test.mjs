@@ -125,6 +125,16 @@ test("persistent length mismatch throws after retries+fallback", async () => {
   );
 });
 
+test("structural gate: throws if the model blanks most segments", async () => {
+  // Model returns the right COUNT but empties the content — the silent-drop case.
+  installFetch((url, opts) => ok(sentSegments(opts).map(() => "")));
+  const paras = Array.from({ length: 8 }, (_, i) => `<p>Real paragraph number ${i} with content.</p>`).join("");
+  await assert.rejects(
+    () => translateHtml({ title: "T", html: paras, targetLang: "Arabic" }, CFG),
+    /أسقطت/
+  );
+});
+
 test("long article: splits into multiple batches, reassembles in order, asks for 8192 tokens", async () => {
   // 8 paragraphs, each ~1200 chars → total ~9600 chars → forces several batches
   // at the 2500-char cap.
