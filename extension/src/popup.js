@@ -3,6 +3,7 @@ import { translateHtml } from "./translate.js";
 import { sendEpubToKindle, checkAuth } from "./deliver.js";
 import { loadSettings, sanitizeFilename, originPattern } from "./settings.js";
 import { addHistoryEntry } from "./history.js";
+import { addToList } from "./readinglist.js";
 
 const els = {
   title: document.getElementById("articleTitle"),
@@ -262,6 +263,16 @@ const previewBtn = document.getElementById("previewBtn");
 if (previewBtn) previewBtn.addEventListener("click", onPreview);
 const fileBtn = document.getElementById("fileBtn");
 if (fileBtn) fileBtn.addEventListener("click", () => chrome.tabs.create({ url: chrome.runtime.getURL("src/drop.html") }));
+const addListBtn = document.getElementById("addListBtn");
+if (addListBtn)
+  addListBtn.addEventListener("click", async () => {
+    if (!article) return;
+    const n = await addToList(activeArticle());
+    setStatus("ok", `أُضيف إلى قائمة القراءة (${n.toLocaleString("ar")} في القائمة).`);
+  });
+const bundleBtn = document.getElementById("bundleBtn");
+if (bundleBtn)
+  bundleBtn.addEventListener("click", () => chrome.tabs.create({ url: chrome.runtime.getURL("src/bundle.html") }));
 els.sendBtn.addEventListener("click", onSend);
 els.downloadBtn.addEventListener("click", onDownload);
 

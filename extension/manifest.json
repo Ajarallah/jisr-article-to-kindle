@@ -3,7 +3,7 @@
   "name": "جسر",
   "version": "0.3.0",
   "description": "جسر: حوِّل أيّ مقال أو ملفّ (md/docx) إلى كتاب كندل نظيف، بعربيّة سليمة وترجمة اختياريّة.",
-  "permissions": ["activeTab", "scripting", "storage"],
+  "permissions": ["activeTab", "scripting", "storage", "unlimitedStorage"],
   "host_permissions": [
     "https://www.amazon.com/*",
     "https://www.amazon.co.uk/*",

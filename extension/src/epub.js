@@ -104,7 +104,7 @@ async function processImageBlob(blob, mime) {
  * Turn the Readability HTML string into well-formed XHTML body content,
  * embedding images into the zip. Returns { xhtml, images:[{path,base64,mime}] }.
  */
-async function normalizeContent(htmlString, baseUrl, embedImages) {
+async function normalizeContent(htmlString, baseUrl, embedImages, imgPrefix = "") {
   const doc = new DOMParser().parseFromString(htmlString, "text/html");
   const images = [];
   let imgIndex = 0;
@@ -137,7 +137,7 @@ async function normalizeContent(htmlString, baseUrl, embedImages) {
       }
       totalBytes += blob.size;
       const ext = extFromMime(mime);
-      const path = `images/img${imgIndex++}.${ext}`;
+      const path = `images/${imgPrefix}img${imgIndex++}.${ext}`;
       const base64 = await blobToBase64(blob);
       images.push({ path, base64, mime });
       img.setAttribute("src", `../${path}`);
@@ -535,4 +535,174 @@ ${coverManifest}${fontManifest}${imageManifest}
   return blob;
 }
 
-export { buildEpub, uuidv4 };
+// Book-level CSS: direction is driven by each chapter's dir attribute (chapters
+// can differ), so styling keys off [dir="rtl"]/[dir="ltr"] instead of a global
+// body direction. Same Arabic-safety rules as buildCss.
+function buildBookCss(hasArabicFont) {
+  const fontFace = hasArabicFont
+    ? `@font-face { font-family: "A2K Arabic"; src: url("../fonts/Amiri-Regular.ttf"); font-weight: normal; font-style: normal; }\n`
+    : "";
+  const arFamily = hasArabicFont ? `"A2K Arabic", "Noto Naskh Arabic", serif` : "serif";
+  return `${fontFace}html, body { margin: 0; padding: 0; }
+body { font-family: serif; line-height: 1.7; padding: 1em; letter-spacing: normal; }
+[dir="rtl"] { direction: rtl; text-align: right; line-height: 1.85; font-family: ${arFamily}; }
+[dir="ltr"] { direction: ltr; text-align: left; }
+h1, h2, h3 { line-height: 1.35; }
+[dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3 { direction: rtl; text-align: right; }
+img { max-width: 100%; height: auto; }
+figure { margin: 1em 0; text-align: center; }
+figcaption { font-size: 0.85em; color: #555; }
+blockquote { margin: 1em; padding-inline-start: 1em; border-inline-start: 3px solid #ccc; }
+pre, code, samp, kbd { direction: ltr; unicode-bidi: isolate; }
+pre { white-space: pre-wrap; word-wrap: break-word; text-align: left; background: #f6f7f8; padding: 0.6em 0.8em; }
+table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 0.95em; }
+th, td { border: 1px solid #ccc; padding: 0.4em 0.6em; text-align: start; vertical-align: top; }
+a { color: inherit; text-decoration: underline; }
+.a2k-meta { color: #666; font-size: 0.9em; margin-bottom: 1.5em; }`;
+}
+
+/*
+ * Build ONE EPUB from several articles (a reading list). Each article becomes a
+ * chapter with its own direction; the book gets a combined nav/ncx and a cover.
+ * opts: { title?, embedImages? }
+ */
+async function buildBook(articles, opts = {}) {
+  if (typeof JSZip === "undefined") throw new Error("JSZip not loaded");
+  if (!articles || !articles.length) throw new Error("no articles");
+  const embedImages = !!opts.embedImages;
+  const anyRtl = articles.some((a) => a.dir === "rtl");
+  const bookDir = articles[0].dir === "rtl" ? "rtl" : "ltr";
+  const lang = (articles[0].lang || (bookDir === "rtl" ? "ar" : "en")).toLowerCase();
+  const bookTitle =
+    opts.title ||
+    (articles.length === 1 ? articles[0].title : `مجموعة قراءة · ${articles.length} مقالات`);
+
+  const zip = new JSZip();
+  const bookId = uuidv4();
+  const nowIso = new Date().toISOString().replace(/\.\d+Z$/, "Z");
+  const dateIso = nowIso.slice(0, 10);
+
+  const arabicFontB64 = anyRtl ? await loadArabicFontBase64() : null;
+  const hasArabicFont = !!arabicFontB64;
+  const cover = await generateCoverJpeg(
+    { title: bookTitle, siteName: articles.length > 1 ? `${articles.length} مقالات` : articles[0].siteName, url: articles[0].url },
+    bookDir === "rtl"
+  );
+
+  zip.file("mimetype", "application/epub+zip", { compression: "STORE" });
+  zip.file(
+    "META-INF/container.xml",
+    `<?xml version="1.0" encoding="UTF-8"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  <rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles>
+</container>`
+  );
+  zip.file("OEBPS/styles/style.css", buildBookCss(hasArabicFont));
+  if (hasArabicFont) zip.file("OEBPS/fonts/Amiri-Regular.ttf", arabicFontB64, { base64: true });
+  if (cover) zip.file("OEBPS/images/cover.jpg", cover.base64, { base64: true });
+
+  const chapters = [];
+  for (let i = 0; i < articles.length; i++) {
+    const a = articles[i];
+    const cdir = a.dir === "rtl" ? "rtl" : "ltr";
+    const clang = (a.lang || (cdir === "rtl" ? "ar" : "en")).toLowerCase();
+    const { xhtml, images, headings } = await normalizeContent(a.content, a.url || "", embedImages, `c${i}-`);
+    for (const img of images) zip.file("OEBPS/" + img.path, img.base64, { base64: true });
+    const src = a.url ? `<div class="a2k-meta">${escapeXml(a.url)}</div>` : "";
+    const file = `text/chapter${i}.xhtml`;
+    zip.file(
+      "OEBPS/" + file,
+      `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="${escapeXml(clang)}" xml:lang="${escapeXml(clang)}" dir="${cdir}">
+<head><meta charset="utf-8"/><title>${escapeXml(a.title)}</title><link rel="stylesheet" type="text/css" href="../styles/style.css"/></head>
+<body dir="${cdir}"><h1 id="ch${i}">${escapeXml(a.title)}</h1>${src}${xhtml}</body>
+</html>`
+    );
+    chapters.push({ i, file, title: a.title, headings, images });
+  }
+
+  const navItems = chapters
+    .map((c) => {
+      const subs = c.headings
+        .map((h) => `<li><a href="${c.file}#${escapeXml(h.id)}">${escapeXml(h.text)}</a></li>`)
+        .join("");
+      const sub = subs ? `<ol>${subs}</ol>` : "";
+      return `<li><a href="${c.file}">${escapeXml(c.title)}</a>${sub}</li>`;
+    })
+    .join("\n      ");
+  zip.file(
+    "OEBPS/nav.xhtml",
+    `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="${escapeXml(lang)}" dir="${bookDir}">
+<head><meta charset="utf-8"/><title>Contents</title></head>
+<body><nav epub:type="toc" id="toc"><h1>المحتويات</h1><ol>
+      ${navItems}
+</ol></nav></body></html>`
+  );
+
+  const ncxPoints = chapters
+    .map(
+      (c, idx) =>
+        `    <navPoint id="np${idx}" playOrder="${idx + 1}"><navLabel><text>${escapeXml(c.title)}</text></navLabel><content src="${c.file}"/></navPoint>`
+    )
+    .join("\n");
+  zip.file(
+    "OEBPS/toc.ncx",
+    `<?xml version="1.0" encoding="UTF-8"?>
+<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
+  <head><meta name="dtb:uid" content="urn:uuid:${bookId}"/></head>
+  <docTitle><text>${escapeXml(bookTitle)}</text></docTitle>
+  <navMap>
+${ncxPoints}
+  </navMap>
+</ncx>`
+  );
+
+  const chapterManifest = chapters
+    .map((c) => `    <item id="chapter${c.i}" href="${c.file}" media-type="application/xhtml+xml"/>`)
+    .join("\n");
+  const imageManifest = chapters
+    .flatMap((c) => c.images)
+    .map((img, i) => `    <item id="img${i}" href="${img.path}" media-type="${img.mime}"/>`)
+    .join("\n");
+  const spine = chapters.map((c) => `    <itemref idref="chapter${c.i}"/>`).join("\n");
+  const fontManifest = hasArabicFont
+    ? `    <item id="arfont" href="fonts/Amiri-Regular.ttf" media-type="font/ttf"/>\n`
+    : "";
+  const coverManifest = cover
+    ? `    <item id="cover-img" href="images/cover.jpg" media-type="image/jpeg" properties="cover-image"/>\n`
+    : "";
+  const coverMeta = cover ? `    <meta name="cover" content="cover-img"/>\n` : "";
+  const ppd = bookDir === "rtl" ? ' page-progression-direction="rtl"' : "";
+
+  zip.file(
+    "OEBPS/content.opf",
+    `<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid" xml:lang="${escapeXml(lang)}" dir="${bookDir}">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="bookid">urn:uuid:${bookId}</dc:identifier>
+    <dc:title>${escapeXml(bookTitle)}</dc:title>
+    <dc:language>${escapeXml(lang)}</dc:language>
+    <dc:creator>جسر</dc:creator>
+    <dc:date>${escapeXml(dateIso)}</dc:date>
+${coverMeta}    <meta property="dcterms:modified">${nowIso}</meta>
+  </metadata>
+  <manifest>
+    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
+    <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
+    <item id="css" href="styles/style.css" media-type="text/css"/>
+${coverManifest}${fontManifest}${chapterManifest}
+${imageManifest}
+  </manifest>
+  <spine toc="ncx"${ppd}>
+${spine}
+  </spine>
+</package>`
+  );
+
+  return zip.generateAsync({ type: "blob", mimeType: "application/epub+zip" });
+}
+
+export { buildEpub, buildBook, uuidv4 };

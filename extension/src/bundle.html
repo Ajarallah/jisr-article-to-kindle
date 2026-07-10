@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>جسر — قائمة القراءة</title>
+  <link rel="stylesheet" href="fonts.css" />
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <span class="brand-badge" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 5.5A2 2 0 0 1 5 3.5h5v16.5H5a2 2 0 0 0-2 2V5.5z" />
+          <path d="M21 5.5a2 2 0 0 0-2-2h-5v16.5h5a2 2 0 0 1 2 2V5.5z" />
+        </svg>
+      </span>
+      <h1><span style="background:linear-gradient(transparent 60%, var(--lime) 60%);padding:0 5px;border-radius:2px;">قائمة القراءة</span></h1>
+    </header>
+
+    <section class="panel">
+      <p class="hint">
+        اجمع عدّة مقالات في <strong>كتابٍ واحد</strong> يُرسَل إلى كندل بفصلٍ لكلّ مقال.
+        أضِف المقالات من زرّ «أضِف للقائمة» في الإضافة، ثمّ ابنِ الكتاب هنا.
+      </p>
+      <ul id="listItems" class="history"></ul>
+      <div class="actions" style="margin-top:14px; gap:10px; flex-wrap:wrap">
+        <button id="sendBtn" class="btn primary" disabled>ابنِ وأرسِل الكتاب</button>
+        <button id="downloadBtn" class="btn ghost" disabled>نزّل الكتاب (EPUB)</button>
+        <button id="clearBtn" class="btn ghost" disabled>امسح القائمة</button>
+      </div>
+      <div id="status" class="status hidden" role="status" aria-live="polite" aria-atomic="true"></div>
+    </section>
+  </div>
+  <script src="../lib/jszip.min.js"></script>
+  <script type="module" src="bundle.js"></script>
+</body>
+</html>

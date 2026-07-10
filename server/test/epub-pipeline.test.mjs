@@ -8,7 +8,7 @@ const dom = new JSDOM("");
 globalThis.DOMParser = dom.window.DOMParser;
 globalThis.XMLSerializer = dom.window.XMLSerializer;
 globalThis.JSZip = JSZip;
-const { buildEpub } = await import("../../extension/src/epub.js");
+const { buildEpub, buildBook } = await import("../../extension/src/epub.js");
 
 async function readZip(blob) {
   const buf = Buffer.from(await blob.arrayBuffer());
@@ -189,6 +189,27 @@ test("cover generation: when canvas is available, EPUB carries a cover image + m
     delete g.OffscreenCanvas;
     delete g.createImageBitmap;
   }
+});
+
+test("buildBook: multiple articles → one multi-chapter EPUB with combined TOC", async () => {
+  const blob = await buildBook([
+    { title: "المقال الأول", content: "<p>محتوى عربي.</p><h2>قسم</h2>", dir: "rtl", lang: "ar", url: "https://a.example/1" },
+    { title: "Second Article", content: "<p>English body.</p>", dir: "ltr", lang: "en", url: "https://b.example/2" },
+  ]);
+  const zip = await readZip(blob);
+  assert.ok(zip.file("OEBPS/text/chapter0.xhtml"), "chapter 0 exists");
+  assert.ok(zip.file("OEBPS/text/chapter1.xhtml"), "chapter 1 exists");
+  const opf = await zip.file("OEBPS/content.opf").async("string");
+  assert.match(opf, /idref="chapter0"[\s\S]*idref="chapter1"/, "both chapters in spine, in order");
+  assert.match(opf, /page-progression-direction="rtl"/, "book direction from first article");
+  const nav = await zip.file("OEBPS/nav.xhtml").async("string");
+  assert.match(nav, /chapter0\.xhtml/, "TOC links chapter 0");
+  assert.match(nav, /chapter1\.xhtml/, "TOC links chapter 1");
+  assert.match(nav, /المقال الأول/);
+  assert.match(nav, /Second Article/);
+  // Per-chapter direction is preserved.
+  const ch1 = await zip.file("OEBPS/text/chapter1.xhtml").async("string");
+  assert.match(ch1, /dir="ltr"/, "English chapter stays LTR");
 });
 
 test("LTR article -> no RTL markers", async () => {
