@@ -5,6 +5,15 @@ All notable changes to this project are documented here.
 ## [Unreleased]
 
 ### Added
+- **Bilingual / interleaved EPUB** — a study mode that keeps the original and
+  places its translation after each block (original LTR, translation Arabic RTL,
+  each with correct direction). No competitor offers this — it turns a clean
+  reprint into a language-learning artifact.
+- **Study-mode glossary** — AI-picked hard terms become native Kindle popup
+  footnotes with a short Arabic gloss (falling back to linked endnotes on
+  devices without popups).
+- **Edit title/author before send**, and real publish-date/author pulled from
+  the page's metadata (meta tags / JSON-LD) into the book.
 - **Optional image embedding** — off by default (EPUBs stay text-only). Turn it
   on in Settings and the browser asks for permission to read images from article
   sites; `epub.js` then fetches and embeds them. Previously the extension always
@@ -35,7 +44,13 @@ All notable changes to this project are documented here.
 - **Arabic rendering** — headings re-declare RTL, code/inline-English is isolated
   so it can't corrupt Arabic punctuation, line-height is looser, and
   letter-spacing (which breaks Arabic joining) is pinned off. Language tags are
-  lowercased so Amazon doesn't reject the file.
+  lowercased and region-simplified (en-US → en) so Amazon doesn't reject the file.
+- **Kindle robustness** — every chapter is validated as well-formed XML before
+  packing (malformed XHTML makes Amazon silently drop the font/CSS); stray `�`
+  chars are stripped; relative links/images are made absolute so they don't die
+  once the EPUB leaves the browser; anchor-wrapped thumbnails use the full image.
+- **If delivery fails**, the built EPUB is offered for download plus a link to
+  Amazon's official Send-to-Kindle as a resilient fallback.
 - **Long-article translation** no longer fails on dense Arabic (RTL-aware
   batching + a larger output budget), and shows per-batch progress.
 - **NVIDIA API key now stored in `chrome.storage.local`** instead of `sync`, so
