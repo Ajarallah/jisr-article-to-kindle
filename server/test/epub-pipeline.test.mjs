@@ -117,6 +117,45 @@ test("Arabic EPUB quality: RTL heading CSS, LTR code, lowercase lang, dc:date, T
   assert.match(nav, /chapter\.xhtml#sec-/, "TOC links the auto-id'd heading");
 });
 
+test("code indentation and tables survive with styling", async () => {
+  const blob = await buildEpub({
+    title: "Docs page",
+    content:
+      "<pre><code>function f() {\n    return 1;\n}</code></pre>" +
+      "<table><thead><tr><th>Key</th><th>Value</th></tr></thead><tbody><tr><td>a</td><td>1</td></tr></tbody></table>",
+    dir: "ltr",
+    lang: "en",
+    url: "https://example.com/docs",
+  });
+  const zip = await readZip(blob);
+  const chapter = await zip.file("OEBPS/text/chapter.xhtml").async("string");
+  // Indentation (leading spaces + newline) preserved inside <pre>.
+  assert.match(chapter, /return 1;/);
+  assert.ok(/\n {4}return 1;/.test(chapter) || /function f\(\) \{\n {4}return/.test(chapter), "code indentation kept");
+  assert.match(chapter, /<table[^>]*>[\s\S]*<td>1<\/td>/, "table structure kept");
+  const css = await zip.file("OEBPS/styles/style.css").async("string");
+  assert.match(css, /th, td \{ border/, "tables styled");
+});
+
+test("footnote refs and targets get epub:type (popup floor)", async () => {
+  const blob = await buildEpub({
+    title: "Article with notes",
+    content:
+      '<p>A claim.<sup><a href="#fn1">1</a></sup> More text <a href="#sec">see section</a>.</p>' +
+      '<h2 id="sec">A Section</h2>' +
+      '<ol><li id="fn1">The footnote body.</li></ol>',
+    dir: "ltr",
+    lang: "en",
+    url: "https://example.com/notes",
+  });
+  const zip = await readZip(blob);
+  const chapter = await zip.file("OEBPS/text/chapter.xhtml").async("string");
+  assert.match(chapter, /epub:type="noteref"[^>]*href="#fn1"|href="#fn1"[^>]*epub:type="noteref"/, "ref marked noteref");
+  assert.match(chapter, /<li id="fn1" epub:type="footnote"|epub:type="footnote"[^>]*id="fn1"/, "target marked footnote");
+  // The section link (non-numeric) is NOT treated as a footnote.
+  assert.doesNotMatch(chapter, /href="#sec" epub:type="noteref"/, "section link not a noteref");
+});
+
 test("cover generation: when canvas is available, EPUB carries a cover image + metadata", async () => {
   // Minimal OffscreenCanvas/createImageBitmap shims so generateCoverJpeg runs.
   const g = globalThis;

@@ -182,6 +182,24 @@ async function normalizeContent(htmlString, baseUrl, embedImages) {
     headings.push({ id, level: Number(h.tagName[1]) || 2, text });
   });
 
+  // Mark footnote references + their targets with epub:type so readers that
+  // support it show a popup; the anchor still works as plain navigation on the
+  // rest. Conservative: only numeric/superscript refs pointing at an existing id.
+  Array.from(doc.querySelectorAll('a[href^="#"]')).forEach((a) => {
+    const href = a.getAttribute("href") || "";
+    const targetId = decodeURIComponent(href.slice(1));
+    if (!targetId) return;
+    const target = doc.getElementById(targetId);
+    if (!target) return;
+    const label = (a.textContent || "").trim();
+    const looksLikeNote = /^\[?\d{1,3}\]?$/.test(label) || !!a.closest("sup");
+    if (!looksLikeNote) return;
+    a.setAttribute("epub:type", "noteref");
+    if (/^(li|p|div|aside)$/.test(target.tagName.toLowerCase())) {
+      target.setAttribute("epub:type", "footnote");
+    }
+  });
+
   // Serialize body as XHTML.
   const serializer = new XMLSerializer();
   let xhtml = "";
@@ -226,7 +244,11 @@ figure { margin: 1em 0; text-align: center; }
 figcaption { font-size: 0.85em; color: #555; }
 blockquote { margin: 1em; padding-inline-start: 1em; border-inline-start: 3px solid #ccc; }
 pre, code, samp, kbd { direction: ltr; unicode-bidi: isolate; }
-pre { white-space: pre-wrap; word-wrap: break-word; text-align: left; }
+pre { white-space: pre-wrap; word-wrap: break-word; text-align: left; background: #f6f7f8; padding: 0.6em 0.8em; }
+code { font-size: 0.95em; }
+table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 0.95em; }
+th, td { border: 1px solid #ccc; padding: 0.4em 0.6em; text-align: start; vertical-align: top; }
+th { background: #f2f3f5; }
 a { color: inherit; text-decoration: underline; }
 .a2k-meta { color: #666; font-size: 0.9em; margin-bottom: 1.5em; }
 `;
