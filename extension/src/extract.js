@@ -133,6 +133,21 @@
     return clone.innerHTML;
   }
 
+  // If the user has selected text on the page, capture it as clean HTML so they
+  // can send just the selection (study/notes) instead of the whole article.
+  function getSelectionHtml() {
+    if (typeof window === "undefined" || !window.getSelection) return null;
+    var sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null;
+    var container = document.createElement("div");
+    for (var i = 0; i < sel.rangeCount; i++) {
+      container.appendChild(sel.getRangeAt(i).cloneContents());
+    }
+    var text = (container.textContent || "").trim();
+    if (text.length < 20) return null;
+    return { html: container.innerHTML, text: text };
+  }
+
   function metaTitle(doc) {
     var og = doc.querySelector('meta[property="og:title"]');
     if (og && og.content) return og.content.trim();
@@ -200,6 +215,7 @@
       content: content,
       textLength: dirText.trim().length,
       strategy: useMain ? "main-region" : "readability",
+      selection: getSelectionHtml(),
     };
   } catch (e) {
     return { ok: false, error: String(e && e.message ? e.message : e) };

@@ -9,6 +9,9 @@ const els = {
   meta: document.getElementById("articleMeta"),
   translateToggle: document.getElementById("translateToggle"),
   translateOptions: document.getElementById("translateOptions"),
+  selectionRow: document.getElementById("selectionRow"),
+  selectionToggle: document.getElementById("selectionToggle"),
+  selectionLabel: document.getElementById("selectionLabel"),
   targetLang: document.getElementById("targetLang"),
   deliveryInfo: document.getElementById("deliveryInfo"),
   sendBtn: document.getElementById("sendBtn"),
@@ -83,10 +86,25 @@ async function extractCurrentArticle() {
     els.meta.textContent = bits.join(" · ");
     els.sendBtn.disabled = false;
     els.downloadBtn.disabled = false;
+    // Offer "send selection only" when the user had text selected on the page.
+    if (article.selection && article.selection.text) {
+      const selWords = Math.max(1, Math.round(article.selection.text.length / 6));
+      els.selectionLabel.textContent = `أرسل التحديد فقط (${selWords.toLocaleString("ar")} كلمة)`;
+      els.selectionRow.classList.remove("hidden");
+    }
   } catch (e) {
     els.title.textContent = "فشل الاستخلاص: " + e.message;
     els.title.classList.remove("skeleton");
   }
+}
+
+// The article to actually build/send: the on-page selection when the user asked
+// for "selection only", otherwise the full extracted article.
+function activeArticle() {
+  if (els.selectionToggle.checked && article && article.selection) {
+    return { ...article, content: article.selection.html };
+  }
+  return article;
 }
 
 async function translateArticle(art, targetLang) {
@@ -129,10 +147,11 @@ async function ensureImagePermission() {
 }
 
 async function prepareArticle(embedImages) {
-  let art = article;
+  const base = activeArticle();
+  let art = base;
   if (els.translateToggle.checked) {
     setStatus("working", '<span class="spinner"></span>جارٍ الترجمة بالذكاء الاصطناعي…');
-    art = await translateArticle(article, els.targetLang.value);
+    art = await translateArticle(base, els.targetLang.value);
   }
   setStatus("working", '<span class="spinner"></span>جارٍ بناء ملف EPUB…');
   const blob = await buildEpub(art, { embedImages });
@@ -206,10 +225,10 @@ async function onPreview() {
   els.downloadBtn.disabled = true;
   try {
     const embedImages = await ensureImagePermission();
-    let art = article;
+    let art = activeArticle();
     if (els.translateToggle.checked) {
       setStatus("working", '<span class="spinner"></span>جارٍ الترجمة بالذكاء الاصطناعي…');
-      art = await translateArticle(article, els.targetLang.value);
+      art = await translateArticle(art, els.targetLang.value);
     }
     await chrome.storage.local.set({
       a2k_preview: {
