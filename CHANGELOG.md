@@ -2,6 +2,26 @@
 
 All notable changes to this project are documented here.
 
+## [Unreleased]
+
+### Added
+- **Optional image embedding** — off by default (EPUBs stay text-only). Turn it
+  on in Settings and the browser asks for permission to read images from article
+  sites; `epub.js` then fetches and embeds them. Previously the extension always
+  tried to embed but never had the permission, so images were silently dropped.
+
+### Changed
+- **NVIDIA API key now stored in `chrome.storage.local`** instead of `sync`, so
+  the secret no longer roams to Google's cloud or your other devices. Any key
+  from an older build is migrated automatically.
+- **Toolbar icon** is a simple open-book glyph that stays legible at 16px (the
+  previous 16px icon was dense poster art that collapsed into a smudge).
+
+### Internal
+- Settings (`DEFAULT_SETTINGS`, `sanitizeFilename`, load/save) consolidated into
+  a single `src/settings.js`, ending the three-way duplication across popup,
+  drop and options.
+
 ## [0.3.0] — 2026-07-07
 
 ### Changed
