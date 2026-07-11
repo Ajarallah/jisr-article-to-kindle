@@ -168,7 +168,7 @@ function activeArticle() {
 }
 
 async function translateArticle(art, targetLang) {
-  if (!settings.translationKey) throw new Error("أضف مفتاح NVIDIA في الإعدادات لتفعيل الترجمة.");
+  if (!settings.translationKey) throw new Error("الترجمة المجانية ستتوفّر قريبًا بإذن الله.");
   const out = await translateHtml(
     { title: art.title, html: art.content, targetLang },
     {
@@ -215,7 +215,7 @@ async function prepareArticle(embedImages) {
     art = await translateArticle(base, els.targetLang.value);
   }
   if (els.glossaryToggle && els.glossaryToggle.checked) {
-    if (!settings.translationKey) throw new Error("أضف مفتاح NVIDIA في الإعدادات لتفعيل المسرد.");
+    if (!settings.translationKey) throw new Error("المسرد الدراسي سيتوفّر قريبًا بإذن الله.");
     setStatus("working", '<span class="spinner"></span>جارٍ إعداد المسرد الدراسي…');
     const annotated = await annotateHtml(
       art.content,

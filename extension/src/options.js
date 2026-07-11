@@ -4,7 +4,6 @@ import { getHistory, clearHistory } from "./history.js";
 
 const els = {
   amazonDomain: document.getElementById("amazonDomain"),
-  translationKey: document.getElementById("translationKey"),
   translateByDefault: document.getElementById("translateByDefault"),
   defaultTargetLang: document.getElementById("defaultTargetLang"),
   embedImages: document.getElementById("embedImages"),
@@ -62,7 +61,6 @@ function setStatus(kind, text) {
 async function load() {
   const s = await loadSettings();
   els.amazonDomain.value = s.amazonDomain || DEFAULT_SETTINGS.amazonDomain;
-  els.translationKey.value = s.translationKey || "";
   els.translateByDefault.checked = !!s.translateByDefault;
   els.defaultTargetLang.value = s.defaultTargetLang || DEFAULT_SETTINGS.defaultTargetLang;
   // Just a default preference now — the actual per-site permission is requested
@@ -85,7 +83,6 @@ async function save() {
   }
   await saveSettings({
     amazonDomain: domain,
-    translationKey: els.translationKey.value.trim(),
     translateByDefault: els.translateByDefault.checked,
     defaultTargetLang: els.defaultTargetLang.value,
     embedImages: els.embedImages.checked,
