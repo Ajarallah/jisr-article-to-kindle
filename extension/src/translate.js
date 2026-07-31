@@ -19,6 +19,13 @@
 
 import { fetchWithTimeout } from "./net.js";
 
+// net.js defaults to 30s, which is right for the small JSON control calls the
+// delivery path makes. A translation batch is not that: the model streams
+// thousands of Arabic tokens, and measured against free endpoints a 3500-char
+// batch routinely runs past 30s. Cutting it off there produced a TimeoutError
+// that looked like a dead provider when the provider was simply still writing.
+const TRANSLATE_TIMEOUT_MS = 120000;
+
 const DEFAULT_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_MODEL = "deepseek/deepseek-v4-flash";
 const DEFAULT_FALLBACK = "deepseek/deepseek-v4-pro";
@@ -27,10 +34,34 @@ const DEFAULT_FALLBACK = "deepseek/deepseek-v4-pro";
 // safe for English can overflow the output budget in Arabic — truncating the
 // JSON, which then reads as a "segment count mismatch" and burns every retry.
 // Use a tighter char cap for RTL targets and give the model a generous ceiling.
-const MAX_CHARS_PER_BATCH = 2500;
-const MAX_CHARS_PER_BATCH_RTL = 1400;
+// These caps existed to stop a batch overflowing a FLAT max_tokens ceiling and
+// truncating the JSON. Now that outputBudget() sizes the request per batch, the
+// binding constraint is no longer output tokens — it is the provider's requests
+// per minute. Every free tier measured here allows 5-20 rpm, so a 14-paragraph
+// article split into ~10 batches spends minutes queueing. Bigger batches mean
+// fewer requests, which is the only lever that actually helps.
+const MAX_CHARS_PER_BATCH = 6000;
+const MAX_CHARS_PER_BATCH_RTL = 3500;
 const MAX_OUTPUT_TOKENS = 16384;
+const MIN_OUTPUT_TOKENS = 1024;
+// Ask for what this batch can plausibly need, not a flat ceiling. Two reasons:
+// providers that reserve credit against max_tokens reject the call outright when
+// the reservation exceeds the balance (measured: OpenRouter 402 "You requested
+// up to 16384 tokens, but can only afford 1020"), and an honest budget lets a
+// provider schedule the request sooner. Arabic runs roughly 1 token per 2 source
+// chars and inflates over English, so 1.6x source length is a generous margin.
+function outputBudget(segments) {
+  const chars = segments.reduce((n, s) => n + s.length, 0);
+  return Math.min(MAX_OUTPUT_TOKENS, Math.max(MIN_OUTPUT_TOKENS, Math.round(chars * 1.6)));
+}
 const MAX_ATTEMPTS_PER_MODEL = 3;
+// When a provider rate-limits without saying for how long, probe upward from a
+// short gap instead of assuming the worst case. Free tiers range from ~5 rpm
+// (12s apart) to ~20 rpm (3s apart); jumping straight to 12s makes the fast
+// ones four times slower than they need to be.
+const RATE_LIMIT_START_MS = 1500;
+const RATE_LIMIT_MAX_MS = 15000;
+const RATE_LIMIT_BACKOFF_MS = RATE_LIMIT_START_MS;
 // Batches are independent, so run a few in flight at once. Sequential batching
 // made wall time = batches × latency — a long article became an unusable wait.
 // Kept deliberately low: providers rate-limit, and 429s would just burn the
@@ -72,24 +103,74 @@ function parseJsonArray(content, expectedLen) {
   return arr.map((x) => (x == null ? "" : String(x)));
 }
 
+/*
+ * Adaptive rate pacer.
+ *
+ * Free tiers are commonly 5-20 requests/minute. Firing MAX_CONCURRENT_BATCHES
+ * with sub-second retries guarantees 429s against any of them — measured on a
+ * real 14-paragraph article: Z.AI answered 3 requests and refused 8, SambaNova
+ * answered 11 and refused 21. Retrying harder makes it worse, because every
+ * retry is another request inside the same window.
+ *
+ * So: start optimistic (no spacing, full concurrency) and let the FIRST 429
+ * teach us the provider's pace. From then on every request in the run queues
+ * behind a minimum interval. Nothing to configure per provider, and a fast paid
+ * endpoint never pays for the machinery.
+ */
+function makePacer() {
+  return { minIntervalMs: 0, nextAt: 0 };
+}
+
+async function pace(pacer) {
+  if (!pacer || !pacer.minIntervalMs) return;
+  const now = Date.now();
+  const at = Math.max(now, pacer.nextAt);
+  pacer.nextAt = at + pacer.minIntervalMs;
+  if (at > now) await sleep(at - now);
+}
+
+/*
+ * A 429 tells us we are too fast; converge on the real pace rather than guess it.
+ * With an explicit Retry-After we obey it exactly. Without one we start at
+ * RATE_LIMIT_START_MS and double on each further refusal, so a 20 rpm provider
+ * settles around 3s while a 5 rpm one climbs to ~12s. The interval only ever
+ * grows within a run — backing off and speeding up again just re-triggers the
+ * limit.
+ */
+function learnRateLimit(pacer, ms, explicit) {
+  if (!pacer) return;
+  const next = explicit
+    ? ms
+    : pacer.minIntervalMs
+      ? Math.min(pacer.minIntervalMs * 2, RATE_LIMIT_MAX_MS)
+      : RATE_LIMIT_START_MS;
+  pacer.minIntervalMs = Math.max(pacer.minIntervalMs, next);
+  pacer.nextAt = Math.max(pacer.nextAt, Date.now() + pacer.minIntervalMs);
+}
+
 // One completion attempt against a specific model. Throws with `.retryable`.
-async function complete(segments, targetLang, cfg, model, signal) {
+async function complete(segments, targetLang, cfg, model, signal, pacer) {
+  await pace(pacer);
   let resp;
   try {
-    resp = await fetchWithTimeout(cfg.endpoint || DEFAULT_ENDPOINT, {
-      method: "POST",
-      signal,
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.apiKey}` },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: systemPrompt(targetLang) },
-          { role: "user", content: JSON.stringify(segments) },
-        ],
-        temperature: 0.2,
-        max_tokens: MAX_OUTPUT_TOKENS,
-      }),
-    });
+    resp = await fetchWithTimeout(
+      cfg.endpoint || DEFAULT_ENDPOINT,
+      {
+        method: "POST",
+        signal,
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.apiKey}` },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: systemPrompt(targetLang) },
+            { role: "user", content: JSON.stringify(segments) },
+          ],
+          temperature: 0.2,
+          max_tokens: outputBudget(segments),
+        }),
+      },
+      TRANSLATE_TIMEOUT_MS
+    );
   } catch (e) {
     if (e && e.name === "AbortError") throw e; // user cancel — propagate, don't retry
     const timedOut = e && e.name === "TimeoutError";
@@ -109,6 +190,15 @@ async function complete(segments, targetLang, cfg, model, signal) {
     const err = new Error(`${model} ${resp.status}: ${t.slice(0, 160)}`);
     // 5xx and 429 (and "ResourceExhausted"/"unavailable") are transient → retry same model.
     err.retryable = resp.status >= 500 || resp.status === 429 || /exhausted|unavailable/i.test(t);
+    // A rate limit needs to be waited out, not hammered. Free tiers are commonly
+    // ~5 requests/minute, so the sub-second backoff used for other errors just
+    // burns the retry budget. Honour Retry-After when the provider sends it.
+    if (resp.status === 429) {
+      const ra = Number(resp.headers.get("retry-after"));
+      const explicit = Number.isFinite(ra) && ra > 0;
+      err.retryAfterMs = explicit ? ra * 1000 : RATE_LIMIT_BACKOFF_MS;
+      learnRateLimit(pacer, err.retryAfterMs, explicit);
+    }
     throw err;
   }
   const data = await resp.json();
@@ -125,7 +215,7 @@ async function complete(segments, targetLang, cfg, model, signal) {
 }
 
 // Try the primary model with retries; on exhaustion fall back to the secondary.
-async function translateBatch(segments, targetLang, cfg, signal) {
+async function translateBatch(segments, targetLang, cfg, signal, pacer) {
   const models = [cfg.model || DEFAULT_MODEL, cfg.fallbackModel || DEFAULT_FALLBACK].filter(
     (m, i, a) => m && a.indexOf(m) === i
   );
@@ -133,12 +223,14 @@ async function translateBatch(segments, targetLang, cfg, signal) {
   for (const model of models) {
     for (let attempt = 0; attempt < MAX_ATTEMPTS_PER_MODEL; attempt++) {
       try {
-        return await complete(segments, targetLang, cfg, model, signal);
+        return await complete(segments, targetLang, cfg, model, signal, pacer);
       } catch (e) {
         if (e && e.name === "AbortError") throw e; // user cancel — stop immediately
         lastErr = e;
         if (e.retryable === false) break; // hard error for this model → try fallback
-        await sleep(500 * (attempt + 1));
+        // A 429 is already absorbed by the pacer's interval; sleeping again here
+        // would double-count it. Other errors keep the short backoff.
+        if (!e.retryAfterMs) await sleep(500 * (attempt + 1));
       }
     }
   }
@@ -239,6 +331,7 @@ export async function translateHtml({ title, html, targetLang }, cfg, opts = {})
   // Run batches through a small worker pool. Results are written by index, so
   // reassembly order is independent of completion order.
   const results = new Array(batches.length);
+  const pacer = makePacer();
   let done = 0;
   let next = 0;
   if (onProgress) onProgress(0, batches.length);
@@ -252,7 +345,7 @@ export async function translateHtml({ title, html, targetLang }, cfg, opts = {})
         lead: s.match(/^\s*/)[0],
         trail: s.match(/\s*$/)[0],
       }));
-      const out = await translateBatch(info.map((t) => t.core), targetLang, cfg, signal);
+      const out = await translateBatch(info.map((t) => t.core), targetLang, cfg, signal, pacer);
       results[i] = out.map((t, j) => info[j].lead + t + info[j].trail);
       done += 1;
       if (onProgress) onProgress(done, batches.length);

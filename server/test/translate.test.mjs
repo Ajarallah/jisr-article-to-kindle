@@ -159,23 +159,32 @@ test("structural gate: throws if the model blanks most segments", async () => {
   );
 });
 
-test("long article: splits into multiple batches, reassembles in order, asks for 8192 tokens", async () => {
+test("long article: splits into multiple batches, reassembles in order, budgets output per batch", async () => {
   // 8 paragraphs, each ~1200 chars → total ~9600 chars → forces several batches
   // at the 2500-char cap.
   const bodyText = (i) =>
     `Paragraph ${i}. ` + "This is a long sentence used to inflate the segment length well past a few hundred characters so batching is exercised. ".repeat(9);
   const paras = Array.from({ length: 8 }, (_, i) => `<p>${bodyText(i + 1)}</p>`).join("");
 
-  const maxTokensSeen = [];
+  const seen = [];
   const calls = installFetch((url, opts) => {
-    maxTokensSeen.push(JSON.parse(opts.body).max_tokens);
+    const body = JSON.parse(opts.body);
+    seen.push({ max: body.max_tokens, chars: sentSegments(opts).reduce((n, s) => n + s.length, 0) });
     return ok(sentSegments(opts).map((s) => "AR:" + s));
   });
 
   const out = await translateHtml({ title: "T", html: paras, targetLang: "Arabic" }, CFG);
 
   assert.ok(calls.n >= 2, "long input should span multiple batches");
-  assert.ok(maxTokensSeen.every((m) => m >= 8192), "each request asks for >= 8192 output tokens");
+  // The budget must comfortably cover the batch (Arabic inflates over English)
+  // without asking for a flat ceiling: providers that reserve credit against
+  // max_tokens reject an oversized reservation outright.
+  for (const s of seen) {
+    assert.ok(s.max >= s.chars, `budget ${s.max} must cover ${s.chars} source chars`);
+    assert.ok(s.max >= 1024, "never ask for less than the floor");
+    assert.ok(s.max <= 16384, "never ask for more than the ceiling");
+  }
+  assert.ok(seen.some((s) => s.max < 16384), "budget scales with the batch, it is not a flat ceiling");
   // reassembly: every paragraph translated, order preserved
   for (let i = 1; i <= 8; i++) {
     assert.match(out.html, new RegExp(`AR:Paragraph ${i}\\.`));
