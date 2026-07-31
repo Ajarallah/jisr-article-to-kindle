@@ -183,3 +183,69 @@ test("long article: splits into multiple batches, reassembles in order, asks for
   // order preserved: "Paragraph 1" appears before "Paragraph 2"
   assert.ok(out.html.indexOf("AR:Paragraph 1.") < out.html.indexOf("AR:Paragraph 2."));
 });
+
+test("batches run concurrently and still reassemble in source order", async () => {
+  // 8 fat paragraphs → several batches at the RTL cap.
+  const para = (i) =>
+    `<p>Paragraph ${i}. ` + "Filler text that inflates this segment well past the batching threshold. ".repeat(9) + "</p>";
+  const html = Array.from({ length: 8 }, (_, i) => para(i + 1)).join("");
+
+  let inFlight = 0;
+  let peakInFlight = 0;
+  let call = 0;
+  globalThis.fetch = async (url, opts) => {
+    inFlight += 1;
+    peakInFlight = Math.max(peakInFlight, inFlight);
+    // Later calls finish FIRST — if reassembly depended on completion order
+    // rather than batch index, this would scramble the output.
+    const delay = Math.max(0, 40 - call++ * 10);
+    await new Promise((r) => setTimeout(r, delay));
+    inFlight -= 1;
+    return ok(sentSegments(opts).map((s) => "AR:" + s));
+  };
+
+  const out = await translateHtml({ title: "T", html, targetLang: "Arabic" }, CFG);
+
+  assert.ok(peakInFlight > 1, `expected overlapping requests, saw peak ${peakInFlight}`);
+  assert.ok(peakInFlight <= 3, `concurrency must stay capped, saw peak ${peakInFlight}`);
+  for (let i = 1; i < 8; i++) {
+    assert.ok(
+      out.html.indexOf(`AR:Paragraph ${i}.`) < out.html.indexOf(`AR:Paragraph ${i + 1}.`),
+      `paragraph ${i} must precede ${i + 1}`
+    );
+  }
+});
+
+test("a hanging model is abandoned after ONE timeout, not retried into the ground", async () => {
+  // Model A never answers; B is healthy. The old behaviour spent 3 × the fetch
+  // timeout on A before reaching B — 90 real seconds per batch in the field.
+  const perModel = {};
+  globalThis.fetch = async (url, opts) => {
+    const model = sentModel(opts);
+    perModel[model] = (perModel[model] || 0) + 1;
+    if (model === "A") {
+      const e = new Error("timeout");
+      e.name = "TimeoutError";
+      throw e;
+    }
+    return ok(sentSegments(opts).map((s) => "AR:" + s));
+  };
+
+  const out = await translateHtml({ title: "T", html: HTML, targetLang: "Arabic" }, CFG);
+
+  assert.equal(perModel.A, 1, "the hanging model must be tried exactly once");
+  assert.equal(perModel.B, 1, "the fallback must answer");
+  assert.match(out.html, /AR:Hello world\./);
+});
+
+test("a network blip is still retried on the same model", async () => {
+  let n = 0;
+  installFetch((url, opts) => {
+    n += 1;
+    if (n === 1) throw new TypeError("Failed to fetch"); // not a TimeoutError
+    return ok(sentSegments(opts).map((s) => "AR:" + s));
+  });
+  const out = await translateHtml({ title: "T", html: HTML, targetLang: "Arabic" }, CFG);
+  assert.equal(n, 2, "one retry, same model");
+  assert.match(out.html, /AR:Hello world\./);
+});

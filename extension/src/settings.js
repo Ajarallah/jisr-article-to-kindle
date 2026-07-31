@@ -13,7 +13,7 @@ export const DEFAULT_SETTINGS = {
   amazonDomain: "https://www.amazon.com",
   translateByDefault: false,
   defaultTargetLang: "Arabic",
-  translationModel: "z-ai/glm-5.2",
+  translationModel: "deepseek-ai/deepseek-v4-flash",
   translationFallbackModel: "deepseek-ai/deepseek-v4-pro",
   translationEndpoint: "https://integrate.api.nvidia.com/v1/chat/completions",
   embedImages: false,
@@ -56,14 +56,30 @@ export function originPattern(url) {
 }
 
 /*
- * Load merged settings. Reads preferences from sync and the key from local.
+ * The key bundled with the build (src/secrets.js, git-ignored). Imported
+ * dynamically and tolerantly: a clone without the file must still run — there,
+ * translation simply stays off instead of the module graph failing to load.
+ */
+async function bundledTranslationKey() {
+  try {
+    const mod = await import("./secrets.js");
+    return (mod.TRANSLATION_KEY || "").trim();
+  } catch {
+    return "";
+  }
+}
+
+/*
+ * Load merged settings. Reads preferences from sync and the key from local,
+ * falling back to the bundled key so translation works out of the box.
  * Migrates a key left in sync by an older build: moves it to local, then scrubs
  * it from sync so the secret stops roaming.
  */
 export async function loadSettings() {
-  const [synced, local] = await Promise.all([
+  const [synced, local, bundledKey] = await Promise.all([
     chrome.storage.sync.get({ ...DEFAULT_SETTINGS, translationKey: "" }),
     chrome.storage.local.get({ translationKey: "" }),
+    bundledTranslationKey(),
   ]);
   const { translationKey: syncedKey, ...prefs } = synced;
   let translationKey = local.translationKey || "";
@@ -72,7 +88,8 @@ export async function loadSettings() {
     await chrome.storage.local.set({ translationKey });
   }
   if (syncedKey) await chrome.storage.sync.remove("translationKey");
-  return { ...DEFAULT_SETTINGS, ...prefs, translationKey };
+  // A key the user entered themselves outranks the bundled one.
+  return { ...DEFAULT_SETTINGS, ...prefs, translationKey: translationKey || bundledKey };
 }
 
 /*

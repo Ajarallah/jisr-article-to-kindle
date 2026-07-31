@@ -6,20 +6,20 @@
  * write the results back into the same nodes. Tags, images, and links are never
  * sent to the model.
  *
- * Default backend: NVIDIA NIM (OpenAI-compatible), model z-ai/glm-5.2 — chosen
- * after benchmarking 5 models on Arabic translation (best quality + speed +
- * instruction-compliance; see docs/05-translation-model-selection.md). Falls
- * back to deepseek-ai/deepseek-v4-pro, and retries transient failures because
- * the free tier occasionally rate-limits.
+ * Default backend: NVIDIA NIM (OpenAI-compatible), model
+ * deepseek-ai/deepseek-v4-flash — the house model. Speed matters here because a
+ * long article is dozens of sequential batches. Falls back to deepseek-v4-pro,
+ * and retries transient failures because the free tier occasionally rate-limits.
  *
- * BYO key, stored locally in the browser. Requires host access to the endpoint
- * host (see manifest host_permissions).
+ * The key ships with the build (settings.js -> src/secrets.js); a key the user
+ * enters themselves overrides it. Requires host access to the endpoint host
+ * (see manifest host_permissions).
  */
 
 import { fetchWithTimeout } from "./net.js";
 
 const DEFAULT_ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions";
-const DEFAULT_MODEL = "z-ai/glm-5.2";
+const DEFAULT_MODEL = "deepseek-ai/deepseek-v4-flash";
 const DEFAULT_FALLBACK = "deepseek-ai/deepseek-v4-pro";
 // Batches are bounded by INPUT chars, but the model is bounded by OUTPUT tokens.
 // RTL/Arabic output tokenizes much larger than Latin source, so a batch that is
@@ -30,6 +30,11 @@ const MAX_CHARS_PER_BATCH = 2500;
 const MAX_CHARS_PER_BATCH_RTL = 1400;
 const MAX_OUTPUT_TOKENS = 16384;
 const MAX_ATTEMPTS_PER_MODEL = 3;
+// Batches are independent, so run a few in flight at once. Sequential batching
+// made wall time = batches × latency, and NVIDIA's free tier can take a minute
+// or more per call — a long article became an unusable wait. Kept deliberately
+// low: the free tier rate-limits, and 429s would just burn the retry budget.
+const MAX_CONCURRENT_BATCHES = 3;
 
 const RTL_LANGS = ["arabic", "hebrew", "persian", "urdu"];
 const LANG_CODES = { arabic: "ar", english: "en", french: "fr", spanish: "es", german: "de" };
@@ -86,12 +91,16 @@ async function complete(segments, targetLang, cfg, model, signal) {
     });
   } catch (e) {
     if (e && e.name === "AbortError") throw e; // user cancel — propagate, don't retry
+    const timedOut = e && e.name === "TimeoutError";
     const err = new Error(
-      e && e.name === "TimeoutError"
+      timedOut
         ? "انتهت مهلة الاتصال بخدمة الترجمة — أعد المحاولة."
         : "تعذّر الاتصال بخدمة الترجمة — تحقّق من اتصالك."
     );
-    err.retryable = true;
+    // A timeout means this model is not answering at all — hammering it twice
+    // more just burns another 2×30s before the fallback gets its turn. Go to the
+    // next model immediately. A network error, by contrast, is worth a retry.
+    err.retryable = !timedOut;
     throw err;
   }
   if (!resp.ok) {
@@ -226,21 +235,31 @@ export async function translateHtml({ title, html, targetLang }, cfg, opts = {})
   const allSegments = [title || "", ...segments];
   const batches = batchSegments(allSegments, maxChars);
 
-  const translated = [];
+  // Run batches through a small worker pool. Results are written by index, so
+  // reassembly order is independent of completion order.
+  const results = new Array(batches.length);
   let done = 0;
+  let next = 0;
   if (onProgress) onProgress(0, batches.length);
-  for (const batch of batches) {
-    // Preserve leading/trailing whitespace (models tend to trim it).
-    const info = batch.map((s) => ({
-      core: s.trim(),
-      lead: s.match(/^\s*/)[0],
-      trail: s.match(/\s*$/)[0],
-    }));
-    const out = await translateBatch(info.map((t) => t.core), targetLang, cfg, signal);
-    out.forEach((t, i) => translated.push(info[i].lead + t + info[i].trail));
-    done += 1;
-    if (onProgress) onProgress(done, batches.length);
+  async function runBatches() {
+    for (;;) {
+      const i = next++;
+      if (i >= batches.length) return;
+      // Preserve leading/trailing whitespace (models tend to trim it).
+      const info = batches[i].map((s) => ({
+        core: s.trim(),
+        lead: s.match(/^\s*/)[0],
+        trail: s.match(/\s*$/)[0],
+      }));
+      const out = await translateBatch(info.map((t) => t.core), targetLang, cfg, signal);
+      results[i] = out.map((t, j) => info[j].lead + t + info[j].trail);
+      done += 1;
+      if (onProgress) onProgress(done, batches.length);
+    }
   }
+  const lanes = Math.min(MAX_CONCURRENT_BATCHES, batches.length);
+  await Promise.all(Array.from({ length: lanes }, runBatches));
+  const translated = results.flat();
 
   // Structural gate: batching already enforces a 1:1 segment count, so structure
   // is preserved by construction. The remaining failure is the model BLANKING

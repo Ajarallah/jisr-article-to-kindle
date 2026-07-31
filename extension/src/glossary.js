@@ -12,7 +12,7 @@
 import { fetchWithTimeout } from "./net.js";
 
 const DEFAULT_ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions";
-const DEFAULT_MODEL = "z-ai/glm-5.2";
+const DEFAULT_MODEL = "deepseek-ai/deepseek-v4-flash";
 const MAX_TERMS = 25;
 const SKIP = new Set(["SCRIPT", "STYLE", "CODE", "PRE", "A", "SUP"]);
 

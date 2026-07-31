@@ -4,6 +4,27 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+### Changed — translation is on by default
+
+- **Translation and the study glossary now work out of the box.** The build
+  carries an NVIDIA key in `extension/src/secrets.js` (git-ignored; copy
+  `secrets.example.js`), and `loadSettings()` falls back to it. A key the user
+  enters themselves still wins. The "coming soon" messages are gone.
+- **Model is now `deepseek-ai/deepseek-v4-flash`** (was `z-ai/glm-5.2`), with
+  `deepseek-v4-pro` as the fallback.
+- **Batches translate concurrently** (3 in flight, results written by index so
+  source order is preserved). Wall time was batches × latency; a long article
+  over a slow endpoint was an unusable wait.
+- **A model that times out is abandoned after one attempt** instead of being
+  retried three times. Measured against the live endpoint, `deepseek-v4-flash`
+  is currently not answering at all: three 30s timeouts burned 90 seconds per
+  batch before the fallback got its turn. A network error is still retried.
+
+**Note for the operator:** a key shipped inside an extension is not secret — the
+package is a plain zip. This is fine for a personal/unpacked build; before any
+store release, move the key behind a proxy and repoint `translationEndpoint`.
+
+
 ### Changed — visual identity ("الغلاف")
 
 - **The popup's top block is now the book cover itself.** Same vermilion, same

@@ -5,3 +5,8 @@ dist/
 .env
 .stk-credentials.json
 *.epub
+
+# Bundled translation key. Ships inside the unpacked extension folder, never in
+# git — a key pushed to a public repo is scraped within minutes and stays in the
+# history forever. Copy secrets.example.js to secrets.js and fill it in.
+extension/src/secrets.js

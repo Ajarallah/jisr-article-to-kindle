@@ -64,7 +64,7 @@ async function handleFile(file) {
 async function prepareArticle() {
   let art = article;
   if (els.translateToggle.checked) {
-    if (!settings.translationKey) throw new Error("الترجمة المجانية ستتوفّر قريبًا بإذن الله.");
+    if (!settings.translationKey) throw new Error("الترجمة غير متاحة — لا يوجد مفتاح ترجمة في هذه النسخة.");
     setStatus("working", '<span class="spinner"></span>جارٍ الترجمة بالذكاء الاصطناعي…');
     const out = await translateHtml(
       { title: art.title, html: art.content, targetLang: els.targetLang.value },
