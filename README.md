@@ -37,7 +37,7 @@ translation**.
   Arabic never renders as empty boxes on Kindle. Inline English inside Arabic
   renders correctly.
 - **Built-in AI translation** before sending (English ⇄ Arabic and more), via
-  NVIDIA (`deepseek-v4-flash`), in a literary Arabic register: فصحى وسطى, no tashkeel.
+  OpenRouter (`deepseek/deepseek-v4-flash`), in a literary Arabic register: فصحى وسطى, no tashkeel.
 - **Drag & drop files** — drop a Markdown (`.md`) or Word (`.docx`) file (e.g. a
   ChatGPT answer you exported) and it becomes a clean EPUB on your Kindle.
 - **Preview before send** — see the built article (and your translation) in a
@@ -95,10 +95,10 @@ goes to your Kindle, click *"معاينة قبل الإرسال"*.
 
 Translation is built in and needs no setup: the build ships a key in
 `extension/src/secrets.js` (git-ignored — copy `secrets.example.js` and paste
-your own [NVIDIA](https://build.nvidia.com) key). A key you enter yourself
-overrides the bundled one. Model: `deepseek-ai/deepseek-v4-flash`, falling back
-to `deepseek-v4-pro`, with retries on transient rate-limits. The article text
-goes straight from your browser to NVIDIA — never to us.
+your own [OpenRouter](https://openrouter.ai) key). A key you enter yourself
+overrides the bundled one. Model: `deepseek/deepseek-v4-flash`, falling back
+to `deepseek/deepseek-v4-pro`, with retries on transient rate-limits. The article text
+goes straight from your browser to OpenRouter — never to us.
 
 **Before publishing to a store:** a key inside an extension is not secret — the
 package is a plain zip. Move it behind a proxy you operate and repoint
@@ -109,7 +109,7 @@ package is a plain zip. Move it behind a proxy you operate and repoint
 In normal use the extension talks to exactly two places, both yours:
 
 - **Amazon** — your own account, to deliver the file (same as Amazon's extension).
-- **NVIDIA** — only if you turn on translation; the article text, nothing else.
+- **OpenRouter** — only if you turn on translation; the article text, nothing else.
 
 No server operated by this project sits in the path. No analytics, no tracking, no
 telemetry, no accounts. Full policy: [`store/PRIVACY.md`](store/PRIVACY.md).
@@ -124,7 +124,7 @@ extension/               the whole product — a Manifest V3 extension
     options.*            settings (Amazon domain, translation key, defaults)
     extract.js           article extraction (Readability)
     epub.js              clean EPUB3 builder (RTL + embedded Arabic font)
-    translate.js         client-side structure-preserving translation (NVIDIA)
+    translate.js         client-side structure-preserving translation (OpenRouter)
     deliver.js           Send-to-Kindle delivery (Amazon session; verified vs official)
   lib/                   vendored: Readability, JSZip, Amiri font
 docs/                    research, architecture, decision log, competitive analysis

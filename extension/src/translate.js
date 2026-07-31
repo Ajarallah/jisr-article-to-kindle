@@ -6,10 +6,11 @@
  * write the results back into the same nodes. Tags, images, and links are never
  * sent to the model.
  *
- * Default backend: NVIDIA NIM (OpenAI-compatible), model
- * deepseek-ai/deepseek-v4-flash — the house model. Speed matters here because a
- * long article is dozens of sequential batches. Falls back to deepseek-v4-pro,
- * and retries transient failures because the free tier occasionally rate-limits.
+ * Default backend: OpenRouter (OpenAI-compatible), model
+ * deepseek/deepseek-v4-flash — the house model, measured at ~5s per batch there.
+ * Falls back to deepseek-v4-pro and retries transient failures. NVIDIA NIM was
+ * the previous backend and is still usable by overriding translationEndpoint;
+ * it was dropped because its deepseek-v4-flash stopped answering entirely.
  *
  * The key ships with the build (settings.js -> src/secrets.js); a key the user
  * enters themselves overrides it. Requires host access to the endpoint host
@@ -18,9 +19,9 @@
 
 import { fetchWithTimeout } from "./net.js";
 
-const DEFAULT_ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions";
-const DEFAULT_MODEL = "deepseek-ai/deepseek-v4-flash";
-const DEFAULT_FALLBACK = "deepseek-ai/deepseek-v4-pro";
+const DEFAULT_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
+const DEFAULT_MODEL = "deepseek/deepseek-v4-flash";
+const DEFAULT_FALLBACK = "deepseek/deepseek-v4-pro";
 // Batches are bounded by INPUT chars, but the model is bounded by OUTPUT tokens.
 // RTL/Arabic output tokenizes much larger than Latin source, so a batch that is
 // safe for English can overflow the output budget in Arabic — truncating the
@@ -31,9 +32,9 @@ const MAX_CHARS_PER_BATCH_RTL = 1400;
 const MAX_OUTPUT_TOKENS = 16384;
 const MAX_ATTEMPTS_PER_MODEL = 3;
 // Batches are independent, so run a few in flight at once. Sequential batching
-// made wall time = batches × latency, and NVIDIA's free tier can take a minute
-// or more per call — a long article became an unusable wait. Kept deliberately
-// low: the free tier rate-limits, and 429s would just burn the retry budget.
+// made wall time = batches × latency — a long article became an unusable wait.
+// Kept deliberately low: providers rate-limit, and 429s would just burn the
+// retry budget.
 const MAX_CONCURRENT_BATCHES = 3;
 
 const RTL_LANGS = ["arabic", "hebrew", "persian", "urdu"];
@@ -106,7 +107,7 @@ async function complete(segments, targetLang, cfg, model, signal) {
   if (!resp.ok) {
     const t = await resp.text().catch(() => "");
     const err = new Error(`${model} ${resp.status}: ${t.slice(0, 160)}`);
-    // 5xx and 429 (and NVIDIA "ResourceExhausted") are transient → retry same model.
+    // 5xx and 429 (and "ResourceExhausted"/"unavailable") are transient → retry same model.
     err.retryable = resp.status >= 500 || resp.status === 429 || /exhausted|unavailable/i.test(t);
     throw err;
   }
@@ -223,7 +224,7 @@ function interleaveBilingual(srcBody, transBody, targetDir, targetLangCode) {
  *   (returns dir/lang undefined so the caller keeps the SOURCE direction).
  */
 export async function translateHtml({ title, html, targetLang }, cfg, opts = {}) {
-  if (!cfg || !cfg.apiKey) throw new Error("أضف مفتاح الترجمة (NVIDIA) في الإعدادات لتفعيل الترجمة.");
+  if (!cfg || !cfg.apiKey) throw new Error("لا يوجد مفتاح ترجمة في هذه النسخة.");
   const { signal, onProgress, bilingual } = opts;
 
   const doc = new DOMParser().parseFromString(html, "text/html");

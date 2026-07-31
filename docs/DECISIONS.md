@@ -98,6 +98,34 @@ Each entry: **what** was decided, **why**, and the **precedent** it was based on
 - **Precedent:** The owner's standing "external LLM → default to OpenRouter, and never the env Gemini key" rule was the original basis for D3; this decision refines it toward a zero-cost free tier that still isn't the Gemini key, and is grounded in a real benchmark rather than assumption ("verify the real mechanism, don't assume"). See `docs/05-translation-model-selection.md` for the measured basis.
 - **Honesty note:** the free tier can rate-limit or change; the retry and `deepseek-v4-pro` fallback exist to absorb that, and the endpoint/model remain user-overridable in settings.
 
+
+## D14 — Translation backend moved to OpenRouter; key ships with the build
+
+- **What:** The default translation/glossary endpoint is now OpenRouter
+  (`https://openrouter.ai/api/v1/chat/completions`), model
+  **`deepseek/deepseek-v4-flash`**, fallback `deepseek/deepseek-v4-pro`. The key
+  ships inside the build at `extension/src/secrets.js` (git-ignored) instead of
+  being asked from the user; a key the user enters still overrides it.
+  Supersedes the *provider* in D13 and the *BYO-key* half of D10.
+- **Why:** Two measured facts, not preferences. (1) NVIDIA's
+  `deepseek-ai/deepseek-v4-flash` stopped answering entirely — four independent
+  probes exceeded 90-150s with no response, and an instrumented run showed three
+  30s timeouts per batch before `deepseek-v4-pro` answered in 4.3s. The same
+  model on OpenRouter answers in ~1.5s. (2) BYO-key was gating the product's
+  flagship feature behind an errand; the owner asked for it built in.
+- **Consequences:** `manifest.json` host permission swapped
+  `integrate.api.nvidia.com` -> `openrouter.ai`. Two reliability fixes landed
+  with it: batches now run 3-concurrently (order preserved by index), and a model
+  that *times out* is abandoned after one attempt instead of three.
+- **Known risk (documented, accepted):** a key inside an extension is **not
+  secret** - the package is a plain zip and anyone can read it. Acceptable for a
+  personal/unpacked build. Before any store release the key must move behind a
+  proxy the owner operates, with `translationEndpoint` repointed at it. The key
+  is kept out of git so it never reaches the public repo or its history.
+- **Precedent:** the owner's standing "verify the real mechanism, don't assume"
+  rule - the switch is grounded in measurement, and the previous default was
+  retired only after being proven dead, not on suspicion.
+
 ---
 
 ### Money / external-commitment ledger (for the final review)

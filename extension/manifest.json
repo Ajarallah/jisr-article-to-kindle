@@ -22,7 +22,7 @@
     "https://www.amazon.sa/*",
     "https://www.amazon.ae/*",
     "https://*.amazonaws.com/*",
-    "https://integrate.api.nvidia.com/*"
+    "https://openrouter.ai/*"
   ],
   "optional_host_permissions": ["https://*/*"],
   "action": {

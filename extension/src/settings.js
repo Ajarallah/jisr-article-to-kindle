@@ -5,7 +5,7 @@
  * Storage split:
  *  - Preferences (non-secret) live in chrome.storage.sync so they roam across
  *    the user's Chrome profiles.
- *  - The NVIDIA API key is a secret: it lives in chrome.storage.local ONLY and
+ *  - The translation API key is a secret: it lives in chrome.storage.local ONLY and
  *    must never sync to Google's cloud or to the user's other devices.
  */
 
@@ -13,9 +13,9 @@ export const DEFAULT_SETTINGS = {
   amazonDomain: "https://www.amazon.com",
   translateByDefault: false,
   defaultTargetLang: "Arabic",
-  translationModel: "deepseek-ai/deepseek-v4-flash",
-  translationFallbackModel: "deepseek-ai/deepseek-v4-pro",
-  translationEndpoint: "https://integrate.api.nvidia.com/v1/chat/completions",
+  translationModel: "deepseek/deepseek-v4-flash",
+  translationFallbackModel: "deepseek/deepseek-v4-pro",
+  translationEndpoint: "https://openrouter.ai/api/v1/chat/completions",
   embedImages: false,
   // Book customization (how the EPUB is styled — honored by Kindle via our CSS/OPF).
   bookFont: "amiri", // "amiri" = embed the Arabic font, "native" = Kindle's own font

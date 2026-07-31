@@ -11,8 +11,8 @@
 
 import { fetchWithTimeout } from "./net.js";
 
-const DEFAULT_ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions";
-const DEFAULT_MODEL = "deepseek-ai/deepseek-v4-flash";
+const DEFAULT_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
+const DEFAULT_MODEL = "deepseek/deepseek-v4-flash";
 const MAX_TERMS = 25;
 const SKIP = new Set(["SCRIPT", "STYLE", "CODE", "PRE", "A", "SUP"]);
 
@@ -98,7 +98,7 @@ function injectNoteref(node, index, term, id, num) {
  * popups + a glossary section, or the original html if nothing was found.
  */
 export async function annotateHtml(html, cfg, opts = {}) {
-  if (!cfg || !cfg.apiKey) throw new Error("أضف مفتاح الترجمة (NVIDIA) في الإعدادات لتفعيل المسرد.");
+  if (!cfg || !cfg.apiKey) throw new Error("لا يوجد مفتاح ترجمة في هذه النسخة.");
   const targetLang = opts.targetLang || "Arabic";
   const doc = new DOMParser().parseFromString(html, "text/html");
   const glossary = await extractGlossary(doc.body.textContent || "", targetLang, cfg, opts.signal);

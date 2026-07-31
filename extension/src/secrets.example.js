@@ -1,7 +1,7 @@
 /*
  * Bundled translation key — template.
  *
- * Copy this file to `secrets.js` (git-ignored) and paste your NVIDIA key. The
+ * Copy this file to `secrets.js` (git-ignored) and paste your OpenRouter key (sk-or-v1-…). The
  * extension then has translation switched on out of the box; a key the user
  * enters themselves still wins over this one.
  *

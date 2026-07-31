@@ -22,7 +22,7 @@ Unlike most "send to Kindle" tools, Article to Kindle:
   can already read are captured correctly — and your content stays private.
 • Renders Arabic and other right-to-left languages properly, with an embedded
   Arabic font so text is not broken into empty boxes on Kindle.
-• Optionally translates the article with AI before sending (NVIDIA glm-5.2 by
+• Optionally translates the article with AI before sending (deepseek-v4-flash by
   default; bring your own key).
 • Also turns dropped Markdown (.md) or Word (.docx) files — e.g. a ChatGPT answer
   you exported — into clean EPUBs on your Kindle.
@@ -54,8 +54,8 @@ translation step.
   the user's own Amazon sign-in.
 - **host access to \*.amazonaws.com** — Amazon's Send to Kindle returns a
   pre-signed S3 upload URL; the EPUB bytes are uploaded (PUT) there.
-- **host access to integrate.api.nvidia.com** — Only when the user turns on AI
-  translation, the article text is sent to NVIDIA with the user's own key.
+- **host access to openrouter.ai** — Only when the user turns on AI
+  translation, the article text is sent to OpenRouter for the model to translate.
 - **No remote code** — all executable code is bundled in the package.
 
 ## Assets checklist (to produce before submitting)

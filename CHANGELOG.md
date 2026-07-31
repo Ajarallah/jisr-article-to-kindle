@@ -10,8 +10,10 @@ All notable changes to this project are documented here.
   carries an NVIDIA key in `extension/src/secrets.js` (git-ignored; copy
   `secrets.example.js`), and `loadSettings()` falls back to it. A key the user
   enters themselves still wins. The "coming soon" messages are gone.
-- **Model is now `deepseek-ai/deepseek-v4-flash`** (was `z-ai/glm-5.2`), with
-  `deepseek-v4-pro` as the fallback.
+- **Backend is OpenRouter**, model `deepseek/deepseek-v4-flash` with
+  `deepseek/deepseek-v4-pro` as the fallback (was NVIDIA NIM + `z-ai/glm-5.2`).
+  NVIDIA's copy of deepseek-v4-flash had stopped answering; the same model on
+  OpenRouter responds in ~1.5s. The manifest host permission moved with it.
 - **Batches translate concurrently** (3 in flight, results written by index so
   source order is preserved). Wall time was batches × latency; a long article
   over a slow endpoint was an unusable wait.
