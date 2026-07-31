@@ -1,0 +1,58 @@
+/*
+ * جسر — design tokens ("الغلاف" direction).
+ *
+ * The identity is printed, not glassy: flat inks, a warm paper ground, hairline
+ * rules, square corners, no shadows on surfaces. The one shadow in the system is
+ * the popup itself sitting above the page.
+ *
+ * The vermilion is the BOOK COVER colour — the same ink generateCoverJpeg()
+ * paints into the real EPUB cover (epub.js), so the popup's top block is a live
+ * preview of the artifact rather than decoration. Keep the two in sync.
+ *
+ * Typeface: IBM Plex Sans Arabic only (vendored, OFL-1.1). Thmanyah was
+ * evaluated and rejected for shipping: its licence forbids embedding the font
+ * where a third party can extract it, and an unpacked extension is a plain zip.
+ */
+
+:root {
+  /* paper + ink */
+  --paper: #f3eee3;
+  --paper-2: #fdfaf4;
+  --ink: #191713;
+  --muted: #7d7365;
+  --faint: #a1968a;
+  --rule: #ddd4c2;
+  --rule-strong: #c8bda6;
+
+  /* the cover ink */
+  --cover: #cb3f28;
+  --cover-press: #b13520;
+  --cover-text: #f7f2e7;
+  --cover-rule: rgba(247, 242, 231, 0.5);
+  --cover-soft: #f6e2dc;
+
+  /* states */
+  --ok: #2f6b42;
+  --ok-bg: #e8f0e6;
+  --danger: #a32b17;
+  --danger-bg: #f8e6e1;
+
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  /* Printed surfaces don't have soft corners. Only pills (toggles) are round. */
+  --radius: 0px;
+
+  font-family: "IBM Plex Sans Arabic", "SF Arabic", -apple-system,
+    BlinkMacSystemFont, "Segoe UI", "Noto Sans Arabic", Tahoma, Arial, sans-serif;
+}
+
+/* Paper grain — the only "soul" the flat surfaces get. */
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.45;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='0.085'/%3E%3C/svg%3E");
+}

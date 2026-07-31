@@ -4,6 +4,30 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+### Changed — visual identity ("الغلاف")
+
+- **The popup's top block is now the book cover itself.** Same vermilion, same
+  typographic layout, same title/source lines that `generateCoverJpeg()` paints
+  into the EPUB — so the popup previews the artifact instead of decorating it.
+  Editing the title (and now the author) edits the cover you are about to send.
+- **New palette, replacing the blue/lime identity**: paper `#F3EEE3`, ink
+  `#191713`, cover vermilion `#CB3F28`. Printed language throughout — flat inks,
+  hairline rules, square corners, no surface shadows. The only shadow left in the
+  system is the preview sheet, which is paper lifted off a desk.
+- **Shared `src/tokens.css`** now holds the palette; `options.css` became the
+  shared page system for the full-tab screens, and `drop.css` shrank to just its
+  dropzone (it had been duplicating the whole system).
+- **Toolbar icon is the cover in miniature** — and 16px gets its own simplified
+  artwork (`icons/icon16.svg`, two bars on whole pixels) because downscaling the
+  full mark merged its bars into a smudge. Optical sizing, not resizing.
+- The region picker draws in brand vermilion instead of the retired blue.
+
+**Typeface decision:** the UI stays on IBM Plex Sans Arabic (vendored, OFL-1.1).
+Thmanyah was evaluated and rejected for shipping — its licence forbids embedding
+the font anywhere a third party can extract it, and an unpacked extension is a
+plain zip. Amiri is no longer used in any UI surface; it remains embedded *inside
+generated EPUBs* purely for Kindle Arabic shaping, which is unrelated.
+
 ### Added
 - **Book customization** — a "تخصيص الكتاب" panel: Arabic font (embed Amiri or
   Kindle's native), font size, line spacing, margins, justify, cover on/off, and

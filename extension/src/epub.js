@@ -356,25 +356,35 @@ async function generateCoverJpeg(article, isRtl) {
     const W = 1600;
     const H = 2400;
     const margin = 150;
+    // Same inks as the popup's cover block (see src/tokens.css --cover /
+    // --cover-text). The popup previews this image; if you change one, change both.
+    const COVER_INK = "#CB3F28";
+    const COVER_TEXT = "#F7F2E7";
     const canvas = new OffscreenCanvas(W, H);
     const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#3644ED";
+    ctx.fillStyle = COVER_INK;
     ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = "#AEF769";
-    ctx.fillRect(0, H - 170, W, 26);
 
-    const family = isRtl ? '"Noto Naskh Arabic", "Amiri", serif' : "Georgia, serif";
+    const family = isRtl
+      ? '"IBM Plex Sans Arabic", "Noto Naskh Arabic", "Geeza Pro", sans-serif'
+      : '"IBM Plex Sans", Georgia, serif';
     ctx.direction = isRtl ? "rtl" : "ltr";
     ctx.textAlign = isRtl ? "right" : "left";
     const x = isRtl ? W - margin : margin;
 
-    ctx.fillStyle = "#ffffff";
-    ctx.font = `bold 100px ${family}`;
+    // Wordmark, mirroring the popup's cover-top row.
+    ctx.fillStyle = COVER_TEXT;
+    ctx.font = `bold 62px ${family}`;
+    ctx.globalAlpha = 0.9;
+    ctx.fillText("جسر", x, margin + 60);
+    ctx.globalAlpha = 1;
+
+    ctx.font = `bold 104px ${family}`;
     const lines = wrapText(ctx, article.title || "بدون عنوان", W - margin * 2).slice(0, 8);
-    let y = 560;
+    let y = 620;
     for (const ln of lines) {
       ctx.fillText(ln, x, y);
-      y += 140;
+      y += 146;
     }
 
     let host = article.siteName || "";
@@ -386,9 +396,13 @@ async function generateCoverJpeg(article, isRtl) {
       }
     }
     if (host) {
-      ctx.font = `52px ${family}`;
-      ctx.fillStyle = "rgba(255,255,255,0.88)";
-      ctx.fillText(host, x, H - 280);
+      // Hairline above the source line — the printed rule the popup draws too.
+      ctx.globalAlpha = 0.5;
+      ctx.fillRect(margin, H - 330, W - margin * 2, 5);
+      ctx.globalAlpha = 0.92;
+      ctx.font = `50px ${family}`;
+      ctx.fillText(host, x, H - 245);
+      ctx.globalAlpha = 1;
     }
 
     const out = await canvas.convertToBlob({ type: "image/jpeg", quality: 0.85 });

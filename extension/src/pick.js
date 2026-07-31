@@ -11,7 +11,9 @@
   var last = null;
   var box = document.createElement("div");
   box.style.cssText =
-    "position:fixed;z-index:2147483647;border:2px solid #3644ED;background:rgba(54,68,237,0.10);pointer-events:none;border-radius:3px;";
+    // Brand vermilion (tokens.css --cover) — the picker draws on someone else's
+    // page, so it states our identity rather than borrowing the site's.
+    "position:fixed;z-index:2147483647;border:2px solid #CB3F28;background:rgba(203,63,40,0.10);pointer-events:none;border-radius:0;";
   var hint = document.createElement("div");
   hint.textContent = "مرّر على منطقة المقال ثمّ انقر لاختيارها · Esc للإلغاء";
   hint.style.cssText =

@@ -1,7 +1,15 @@
+<!--
+  The toolbar icon is the book cover in miniature: the same vermilion field the
+  popup and generateCoverJpeg() paint, with a right-aligned two-line title block
+  and the source rule beneath it. Solid bars (not a drawn glyph) is what keeps it
+  legible at 16px, where the previous artwork collapsed into a smudge.
+  Regenerate the PNGs with:  cd server && node gen-icons.mjs
+-->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
-  <rect width="128" height="128" rx="28" fill="#3644ED"/>
-  <g fill="#ffffff">
-    <path d="M61 44C49 37.5 37 36.5 29 37.6 26.2 38 24 40.4 24 43.3L24 83c0 2.7 2.2 4.7 4.9 4.4 7.9-.9 19.6.2 32.1 6.6Z"/>
-    <path d="M67 44c12-6.5 24-7.5 32-6.4 2.8.4 5 2.8 5 5.7L104 83c0 2.7-2.2 4.7-4.9 4.4-7.9-.9-19.6.2-32.1 6.6Z"/>
+  <rect width="128" height="128" rx="16" fill="#CB3F28"/>
+  <g fill="#F7F2E7">
+    <rect x="28" y="38" width="72" height="16" rx="2"/>
+    <rect x="52" y="64" width="48" height="16" rx="2"/>
+    <rect x="28" y="96" width="72" height="6" rx="3" opacity="0.55"/>
   </g>
 </svg>

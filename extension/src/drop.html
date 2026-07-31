@@ -5,21 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>جسر — ملف</title>
   <link rel="stylesheet" href="fonts.css" />
+  <link rel="stylesheet" href="tokens.css" />
+  <link rel="stylesheet" href="options.css" />
   <link rel="stylesheet" href="drop.css" />
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <span class="brand-badge" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 5.5A2 2 0 0 1 5 3.5h5v16.5H5a2 2 0 0 0-2 2V5.5z" />
-          <path d="M21 5.5a2 2 0 0 0-2-2h-5v16.5h5a2 2 0 0 1 2 2V5.5z" />
-        </svg>
-      </span>
-      <h1><span style="background:linear-gradient(transparent 60%, var(--lime) 60%);padding:0 5px;border-radius:2px;">جسر</span> — ملفّ إلى كندل</h1>
-    </header>
+  <header class="masthead grain">
+    <div class="masthead-inner">
+      <div class="kicker"><span class="wordmark">جسر</span><span>ملفّ إلى كندل</span></div>
+      <h1>ملفّك، كتابًا على كندل</h1>
+      <p class="lede">اسحب <code>md</code> أو <code>docx</code> — يُحوَّل إلى EPUB نظيف ويُرسَل</p>
+    </div>
+  </header>
 
-    <p class="hint">اسحب ملفّ <code>md</code> أو <code>docx</code> (مثل نتيجة ChatGPT مُصدَّرة) وأفلته هنا — يُحوَّل إلى EPUB نظيف ويُرسَل إلى كندل.</p>
+  <div class="wrap">
 
     <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="أفلت الملف أو اختر ملفا">
       <svg class="dz-icon" viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

@@ -1,0 +1,13 @@
+<!--
+  Optical size for 16px. The full icon.svg has three elements (two title lines +
+  the source rule); at 16px they collapse into a smudge, so this variant keeps
+  only two bars, drawn on whole device pixels so they stay crisp.
+  Consumed by server/gen-icons.mjs for the 16px PNG only.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16">
+  <rect width="16" height="16" rx="2" fill="#CB3F28"/>
+  <g fill="#F7F2E7">
+    <rect x="3" y="4" width="10" height="3"/>
+    <rect x="6" y="9" width="7" height="3"/>
+  </g>
+</svg>
