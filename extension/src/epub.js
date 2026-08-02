@@ -26,6 +26,7 @@ import {
   paintCoverFooter,
   ensureCoverFont,
 } from "./covers.js";
+import { coverDimensions } from "./devices.js";
 
 // Embedding guards: keep opt-in image embedding from blowing past the 50 MB
 // Send-to-Kindle limit or exhausting memory on a gallery page.
@@ -355,6 +356,25 @@ function wrapText(ctx, text, maxWidth) {
   return lines;
 }
 
+// Amazon's published cover limit is 5 MB; re-encoding kicks in a bit under
+// that so a browser/measurement discrepancy at the edge never tips a cover
+// over the real ceiling.
+const MAX_COVER_BYTES = 4 * 1024 * 1024;
+const COVER_QUALITIES = [0.92, 0.85, 0.78];
+
+// Encode the finished canvas to JPEG, stepping quality down only if the first
+// (highest-quality) encode comes out over budget. Patterned covers are flat
+// canvas geometry and compress to a few hundred KB regardless of quality; a
+// real photographic lead image is the case this guard actually protects.
+async function encodeCoverBlob(canvas) {
+  let out = null;
+  for (const quality of COVER_QUALITIES) {
+    out = await canvas.convertToBlob({ type: "image/jpeg", quality });
+    if (out.size <= MAX_COVER_BYTES) break;
+  }
+  return out;
+}
+
 /*
  * Generate the cover so the Kindle library shows a real jacket instead of a
  * placeholder. Returns { base64, mime } or null when canvas isn't available
@@ -366,42 +386,51 @@ function wrapText(ctx, text, maxWidth) {
  * book jacket — artwork band on top, title on the paper below it, metadata
  * plate at the foot — not a poster.
  */
-async function generateCoverJpeg(article, isRtl, styleId) {
+async function generateCoverJpeg(article, isRtl, styleId, deviceId) {
   if (!canUseCanvas()) return null;
   try {
-    const W = 1600;
-    const H = 2400;
+    const { W, H } = coverDimensions(deviceId);
     const margin = W * 0.094;
     await ensureCoverFont();
     const canvas = new OffscreenCanvas(W, H);
     const ctx = canvas.getContext("2d");
-    await paintCoverArtwork(ctx, W, H, styleId, article.leadImage);
+    const leadImageCandidates =
+      article.leadImageCandidates && article.leadImageCandidates.length
+        ? article.leadImageCandidates
+        : article.leadImage
+          ? [article.leadImage]
+          : [];
+    await paintCoverArtwork(ctx, W, H, styleId, leadImageCandidates);
 
     const family = isRtl ? COVER_FONT_RTL : COVER_FONT_LTR;
     ctx.direction = isRtl ? "rtl" : "ltr";
     ctx.textAlign = isRtl ? "right" : "left";
     const x = isRtl ? W - margin : margin;
 
-    // Wordmark, small and orange, sitting just under the artwork band.
+    // Wordmark, small and orange, sitting just under the artwork band. Sized
+    // as a ratio of W (54px at the old fixed 1600px width) so it stays
+    // proportional across every Kindle device width instead of just one.
     const bandBottom = H * ART_BAND;
     ctx.fillStyle = COVER_ORANGE;
-    ctx.font = `${COVER_FONT_WEIGHT} 54px ${family}`;
+    ctx.font = `${COVER_FONT_WEIGHT} ${Math.round(W * 0.03375)}px ${family}`;
     ctx.fillText("جسر", x, bandBottom + margin * 0.62);
 
     // Title: black, the loudest thing on the cover. Line count is capped so a
-    // long headline cannot run into the footer plate.
+    // long headline cannot run into the footer plate. Also a ratio of W
+    // (112px at 1600px), as is the per-line advance below (152px at 1600px).
     ctx.fillStyle = COVER_BLACK;
-    ctx.font = `${COVER_FONT_WEIGHT} 112px ${family}`;
+    const titlePx = Math.round(W * 0.07);
+    ctx.font = `${COVER_FONT_WEIGHT} ${titlePx}px ${family}`;
     const lines = wrapText(ctx, article.title || "بدون عنوان", W - margin * 2).slice(0, 7);
     let y = bandBottom + margin * 1.75;
     for (const ln of lines) {
       ctx.fillText(ln, x, y);
-      y += 152;
+      y += W * 0.095;
     }
 
     await paintCoverFooter(ctx, W, H, article, isRtl);
 
-    const out = await canvas.convertToBlob({ type: "image/jpeg", quality: 0.85 });
+    const out = await encodeCoverBlob(canvas);
     return { base64: await blobToBase64(out), mime: "image/jpeg" };
   } catch (e) {
     return null;
@@ -444,7 +473,8 @@ async function buildEpub(article, opts = {}) {
 
   // Auto-generated typographic cover (null outside the extension / in tests, or
   // when the user turned covers off).
-  const cover = opts.includeCover === false ? null : await generateCoverJpeg(article, isRtl, opts.coverStyle);
+  const cover =
+    opts.includeCover === false ? null : await generateCoverJpeg(article, isRtl, opts.coverStyle, opts.kindleDevice);
 
   // 1) mimetype — MUST be first and stored (uncompressed).
   zip.file("mimetype", "application/epub+zip", { compression: "STORE" });
@@ -676,14 +706,19 @@ async function buildBook(articles, opts = {}) {
             siteName: articles.length > 1 ? `${articles.length} مقالات` : articles[0].siteName,
             url: articles[0].url,
             // A compilation credits itself; a single-article book keeps the
-            // article's own author and date on the jacket.
+            // article's own author and date on the jacket. The lead image,
+            // though, always comes from the first article — a reading list
+            // still opens on a real picture instead of a blank band just
+            // because it bundles more than one piece.
             byline: articles.length > 1 ? "" : articles[0].byline || "",
             date: articles.length > 1 ? "" : articles[0].date || "",
-            leadImage: articles.length > 1 ? "" : articles[0].leadImage || "",
+            leadImage: articles[0].leadImage || "",
+            leadImageCandidates: articles[0].leadImageCandidates || [],
             strategy: articles.length > 1 ? "collection" : articles[0].strategy,
           },
           bookDir === "rtl",
-          opts.coverStyle
+          opts.coverStyle,
+          opts.kindleDevice
         );
 
   zip.file("mimetype", "application/epub+zip", { compression: "STORE" });
