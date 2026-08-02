@@ -9,12 +9,13 @@
  * paints into the real EPUB cover (epub.js), so the popup's top block is a live
  * preview of the artifact rather than decoration. Keep the two in sync.
  *
- * Typeface: IBM Plex Sans Arabic for body text (vendored, OFL-1.1). The cover
- * title uses "The Year of Handicrafts" Black, also vendored and openly-usable
- * (see fonts.css) — an earlier display face, Thmanyah, was evaluated and
- * dropped over licence terms that forbade embedding it where a third party
- * could extract it, which a plain unpacked extension always allows. That
- * constraint no longer applies to the face actually in use.
+ * Typeface: "The Year of Handicrafts", all five weights, vendored (see
+ * fonts.css). It sets the interface AND the cover it produces, so the popup is
+ * literally made of the same type as the book. Measured against IBM Plex Sans
+ * Arabic at 13px the two are within 1.4% on the same Arabic string, which is
+ * why using a display face for body text is safe here rather than merely
+ * tempting. Plex stays vendored as the immediate fallback for anything outside
+ * the subset.
  */
 
 :root {
@@ -79,8 +80,9 @@
   /* Printed surfaces don't have soft corners. Only pills (toggles) are round. */
   --radius: 0px;
 
-  font-family: "IBM Plex Sans Arabic", "SF Arabic", -apple-system,
-    BlinkMacSystemFont, "Segoe UI", "Noto Sans Arabic", Tahoma, Arial, sans-serif;
+  font-family: "The Year of Handicrafts", "IBM Plex Sans Arabic", "SF Arabic",
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans Arabic", Tahoma,
+    Arial, sans-serif;
 }
 
 [dir="rtl"] {

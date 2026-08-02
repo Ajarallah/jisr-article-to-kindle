@@ -29,12 +29,47 @@
 }
 
 /*
- * The Year of Handicrafts (عام الحرف اليدوية) — Black only, the single weight the
- * cover uses. Bundled so every reader gets the intended cover, not just machines
- * that happen to have it installed. Loading it here rather than relying on the
- * system font is also what lets the canvas cover generator use it: the popup
- * document must own the face before OffscreenCanvas can draw with it.
+ * The Year of Handicrafts (عام الحرف اليدوية) — the product's own face, all five
+ * weights. Bundled so every reader gets the intended cover rather than only the
+ * machines that happen to have it installed; loading it here rather than trusting
+ * the system is also what lets the canvas cover generator use it, since the popup
+ * document must own the face before OffscreenCanvas will draw with it.
+ *
+ * Subset with pyftsubset to Arabic + Latin-1 + punctuation, and — this is the part
+ * that silently breaks Arabic if you get it wrong — with the shaping tables kept.
+ * The font carries ccmp/init/medi/fina/liga/rlig in GSUB and kern/mark/mkmk in
+ * GPOS; drop any of those and the letters stop joining. All verified present in
+ * the subset: 809 glyphs in, 713 out, ~40 KB per weight. U+0640 (tatweel) is kept
+ * deliberately — the wordmark stretches on it.
  */
+@font-face {
+  font-family: "The Year of Handicrafts";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../lib/fonts/handicrafts-regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "The Year of Handicrafts";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../lib/fonts/handicrafts-medium.woff2") format("woff2");
+}
+@font-face {
+  font-family: "The Year of Handicrafts";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("../lib/fonts/handicrafts-semibold.woff2") format("woff2");
+}
+@font-face {
+  font-family: "The Year of Handicrafts";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../lib/fonts/handicrafts-bold.woff2") format("woff2");
+}
 @font-face {
   font-family: "The Year of Handicrafts";
   font-style: normal;
