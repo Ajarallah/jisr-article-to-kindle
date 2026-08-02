@@ -206,6 +206,46 @@ export function coverStyle(id) {
   return COVER_STYLES.find((s) => s.id === id) || COVER_STYLES[0];
 }
 
+/*
+ * Keywords that lean a title toward a particular pattern. These are moods, not
+ * subjects: the patterns are abstract, so the mapping asks "does this article
+ * feel ordered, or dense, or expansive" rather than "is it about biology".
+ * A title matching nothing falls through to a random pick, which is the point
+ * of the button — it proposes, it does not classify.
+ */
+const STYLE_MOODS = {
+  rules: ["دراسة", "بحث", "تقرير", "تحليل", "منهج", "study", "research", "report", "analysis", "method", "paper"],
+  dots: ["بيانات", "إحصاء", "شبكة", "نموذج", "ذكاء", "data", "statistics", "network", "model", "ai", "machine"],
+  arcs: ["تاريخ", "نشأة", "أصل", "تطور", "مستقبل", "history", "origin", "evolution", "future", "rise"],
+  weave: ["مجتمع", "علاقة", "لغة", "ثقافة", "ترابط", "society", "language", "culture", "relation", "complex"],
+  frames: ["فلسفة", "فكر", "وعي", "إدراك", "معنى", "philosophy", "mind", "consciousness", "meaning", "theory"],
+  column: ["اقتصاد", "سوق", "نمو", "مال", "أعمال", "economy", "market", "growth", "money", "business"],
+  crosses: ["تقنية", "برمجة", "هندسة", "خوارزم", "نظام", "technology", "software", "engineering", "algorithm", "system"],
+  arch: ["طبيعة", "كون", "فضاء", "بيئة", "حياة", "nature", "universe", "space", "environment", "life"],
+};
+
+/*
+ * Pick a style for "إنشاء غلاف": score each pattern by how many of its mood
+ * words appear in the title, then choose randomly among the leaders. Ties —
+ * including the common case where nothing matches and every pattern ties at
+ * zero — resolve by chance rather than by silently favouring array order, so
+ * pressing the button twice on an unmatched title gives two different covers.
+ * "plain" and "image" are excluded: one is the absence of a choice, the other
+ * depends on an image the page may not have.
+ */
+export function suggestCoverStyle(title) {
+  const text = (title || "").toLowerCase();
+  const ids = Object.keys(STYLE_MOODS);
+  const scored = ids.map((id) => ({
+    id,
+    score: STYLE_MOODS[id].reduce((n, k) => n + (text.includes(k.toLowerCase()) ? 1 : 0), 0),
+  }));
+  const top = Math.max(...scored.map((s) => s.score));
+  const leaders = top > 0 ? scored.filter((s) => s.score === top) : scored;
+  const pick = leaders[Math.floor(Math.random() * leaders.length)];
+  return (pick && pick.id) || "rules";
+}
+
 // Fraction of the cover height the artwork band occupies.
 export const ART_BAND = 0.46;
 
