@@ -6,11 +6,13 @@
  * write the results back into the same nodes. Tags, images, and links are never
  * sent to the model.
  *
- * Default backend: OpenRouter (OpenAI-compatible), model
- * deepseek/deepseek-v4-flash — the house model, measured at ~5s per batch there.
- * Falls back to deepseek-v4-pro and retries transient failures. NVIDIA NIM was
- * the previous backend and is still usable by overriding translationEndpoint;
- * it was dropped because its deepseek-v4-flash stopped answering entirely.
+ * Default backend: OpenRouter (OpenAI-compatible), model openai/gpt-5.6-luna —
+ * measured at 1.75s for a two-segment batch with zero reasoning tokens once
+ * reasoning is disabled. Falls back to deepseek/deepseek-v4-flash, which is
+ * cheaper on output but was the model that exposed the reasoning-token trap.
+ * NVIDIA NIM was an earlier backend and is still usable by overriding
+ * translationEndpoint; it was dropped when its deepseek-v4-flash stopped
+ * answering entirely.
  *
  * The key ships with the build (settings.js -> src/secrets.js); a key the user
  * enters themselves overrides it. Requires host access to the endpoint host
@@ -27,8 +29,8 @@ import { fetchWithTimeout } from "./net.js";
 const TRANSLATE_TIMEOUT_MS = 120000;
 
 const DEFAULT_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
-const DEFAULT_MODEL = "deepseek/deepseek-v4-flash";
-const DEFAULT_FALLBACK = "deepseek/deepseek-v4-pro";
+const DEFAULT_MODEL = "openai/gpt-5.6-luna";
+const DEFAULT_FALLBACK = "deepseek/deepseek-v4-flash";
 // Batches are bounded by INPUT chars, but the model is bounded by OUTPUT tokens.
 // RTL/Arabic output tokenizes much larger than Latin source, so a batch that is
 // safe for English can overflow the output budget in Arabic — truncating the

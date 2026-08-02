@@ -13,8 +13,8 @@ export const DEFAULT_SETTINGS = {
   amazonDomain: "https://www.amazon.com",
   translateByDefault: false,
   defaultTargetLang: "Arabic",
-  translationModel: "deepseek/deepseek-v4-flash",
-  translationFallbackModel: "deepseek/deepseek-v4-pro",
+  translationModel: "openai/gpt-5.6-luna",
+  translationFallbackModel: "deepseek/deepseek-v4-flash",
   translationEndpoint: "https://openrouter.ai/api/v1/chat/completions",
   embedImages: false,
   // Book customization (how the EPUB is styled — honored by Kindle via our CSS/OPF).
