@@ -1,12 +1,14 @@
 import { DEFAULT_SETTINGS, loadSettings, saveSettings } from "./settings.js";
 import { detectAmazonDomain } from "./deliver.js";
 import { getHistory, clearHistory } from "./history.js";
+import { KINDLE_DEVICES } from "./devices.js";
 
 const els = {
   amazonDomain: document.getElementById("amazonDomain"),
   translateByDefault: document.getElementById("translateByDefault"),
   defaultTargetLang: document.getElementById("defaultTargetLang"),
   embedImages: document.getElementById("embedImages"),
+  kindleDevice: document.getElementById("kindleDevice"),
   bookFont: document.getElementById("bookFont"),
   fontSize: document.getElementById("fontSize"),
   lineSpacing: document.getElementById("lineSpacing"),
@@ -58,6 +60,18 @@ function setStatus(kind, text) {
   els.status.classList.remove("hidden");
 }
 
+// Built once from the shared device table (devices.js) rather than hardcoded
+// in options.html, so a device added there shows up here automatically.
+function buildDeviceOptions() {
+  els.kindleDevice.textContent = "";
+  for (const device of KINDLE_DEVICES) {
+    const opt = document.createElement("option");
+    opt.value = device.id;
+    opt.textContent = device.label;
+    els.kindleDevice.appendChild(opt);
+  }
+}
+
 async function load() {
   const s = await loadSettings();
   els.amazonDomain.value = s.amazonDomain || DEFAULT_SETTINGS.amazonDomain;
@@ -66,6 +80,8 @@ async function load() {
   // Just a default preference now — the actual per-site permission is requested
   // from the popup at send time (only that article's origin, never all sites).
   els.embedImages.checked = !!s.embedImages;
+  buildDeviceOptions();
+  els.kindleDevice.value = s.kindleDevice || DEFAULT_SETTINGS.kindleDevice;
   els.bookFont.value = s.bookFont || DEFAULT_SETTINGS.bookFont;
   els.fontSize.value = s.fontSize || DEFAULT_SETTINGS.fontSize;
   els.lineSpacing.value = s.lineSpacing || DEFAULT_SETTINGS.lineSpacing;
@@ -86,6 +102,7 @@ async function save() {
     translateByDefault: els.translateByDefault.checked,
     defaultTargetLang: els.defaultTargetLang.value,
     embedImages: els.embedImages.checked,
+    kindleDevice: els.kindleDevice.value,
     bookFont: els.bookFont.value,
     fontSize: els.fontSize.value,
     lineSpacing: els.lineSpacing.value,
