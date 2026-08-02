@@ -59,8 +59,12 @@ export async function ensureCoverFont() {
  *
  * Each draws into the artwork band (0,0,W,bandH) in orange on the white ground.
  * They are written against normalised proportions of W/bandH rather than fixed
- * pixels, so the same code is correct for the 1600x2400 EPUB cover and for any
- * preview size the popup renders at.
+ * pixels, so the same code is correct at every Kindle device width (see
+ * devices.js) and for any preview size the popup renders at. This includes the
+ * minimum-stroke-width floors below (Math.max(2, …) and friends): a hardcoded
+ * pixel floor looks right only at the one width it was tuned for — relatively
+ * thick on a narrow cover, relatively thin on a wide one — so every floor is
+ * expressed as a fraction of W instead.
  */
 const PATTERNS = {
   // Ruled staves that thin as they descend — a page settling into silence.
@@ -69,7 +73,7 @@ const PATTERNS = {
     for (let i = 0; i < rows; i++) {
       const t = i / (rows - 1);
       ctx.globalAlpha = 0.9 - t * 0.75;
-      ctx.fillRect(0, H * (0.08 + t * 0.84), W, Math.max(2, H * 0.011 * (1 - t * 0.6)));
+      ctx.fillRect(0, H * (0.08 + t * 0.84), W, Math.max(W * 0.00125, H * 0.011 * (1 - t * 0.6)));
     }
     ctx.globalAlpha = 1;
   },
@@ -81,7 +85,7 @@ const PATTERNS = {
     for (let x = step / 2; x < W; x += step) {
       for (let y = step / 2; y < H; y += step) {
         const d = Math.hypot(x / W - 0.15, y / H - 0.85);
-        const r = Math.max(1, step * 0.34 * (1 - Math.min(1, d)));
+        const r = Math.max(W * 0.000625, step * 0.34 * (1 - Math.min(1, d)));
         ctx.globalAlpha = 0.35 + 0.6 * (1 - Math.min(1, d));
         ctx.beginPath();
         ctx.arc(x, y, r, 0, Math.PI * 2);
@@ -99,7 +103,7 @@ const PATTERNS = {
     for (let i = 0; i < 9; i++) {
       const r = H * (0.22 + i * 0.115);
       ctx.globalAlpha = 0.85 - i * 0.075;
-      ctx.lineWidth = Math.max(2, H * 0.016);
+      ctx.lineWidth = Math.max(W * 0.00125, H * 0.016);
       ctx.beginPath();
       ctx.arc(cx, cy, r, Math.PI, Math.PI * 2);
       ctx.stroke();
@@ -110,7 +114,7 @@ const PATTERNS = {
   // Interlaced diagonals — a woven mesh, the densest of the set.
   weave(ctx, W, H) {
     const gap = W / 13;
-    ctx.lineWidth = Math.max(1.5, gap * 0.13);
+    ctx.lineWidth = Math.max(W * 0.0009375, gap * 0.13);
     ctx.globalAlpha = 0.7;
     for (let i = -H; i < W + H; i += gap) {
       ctx.beginPath();
@@ -130,7 +134,7 @@ const PATTERNS = {
 
   // Nested rectangles drifting off-centre — a frame within a frame.
   frames(ctx, W, H) {
-    ctx.lineWidth = Math.max(2, W * 0.007);
+    ctx.lineWidth = Math.max(W * 0.00125, W * 0.007);
     for (let i = 0; i < 11; i++) {
       const t = i / 10;
       ctx.globalAlpha = 0.85 - t * 0.65;
@@ -158,7 +162,7 @@ const PATTERNS = {
     const cols = 7;
     const step = W / cols;
     const arm = step * 0.16;
-    ctx.lineWidth = Math.max(2, step * 0.045);
+    ctx.lineWidth = Math.max(W * 0.00125, step * 0.045);
     ctx.globalAlpha = 0.75;
     for (let x = step / 2; x < W; x += step) {
       for (let y = step / 2; y < H; y += step) {
@@ -175,7 +179,7 @@ const PATTERNS = {
 
   // A single wide arch — the quietest option, closest to a plain jacket.
   arch(ctx, W, H) {
-    ctx.lineWidth = Math.max(3, W * 0.022);
+    ctx.lineWidth = Math.max(W * 0.001875, W * 0.022);
     ctx.globalAlpha = 0.9;
     ctx.beginPath();
     ctx.arc(W * 0.5, H * 1.12, W * 0.46, Math.PI, Math.PI * 2);
