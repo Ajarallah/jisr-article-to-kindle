@@ -1,0 +1,53 @@
+/*
+ * One loading vocabulary, and the one place reduced-motion is handled for the
+ * whole extension.
+ *
+ * The spinner below is the ONLY spinner left in the app (drop.js's file-read
+ * step) — it used to be declared identically in popup.css, preview.css and
+ * options.css even though none of those three ever instantiated a `.spinner`
+ * element; that was dead CSS, not a loading state, so it was deleted rather
+ * than kept "just in case". The one real spinner stays a spinner rather than
+ * being routed through the shared `.progress` component: `.progress` is built
+ * for the 17-60s, cancellable, percent-known category (see its own header
+ * comment), and a file read is neither long enough nor cancellable — giving it
+ * a cancel button would be a UI promise the code does not keep.
+ */
+.spinner {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--rule);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  vertical-align: -1px;
+  margin-inline-end: 7px;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/*
+ * Reduced motion, applied once for everything.
+ *
+ * The rule: kill decoration, substitute for information. Most of what animates
+ * in this extension (hover eases, toggle slides, the spinner's spin, the
+ * reveal transitions added for @starting-style) is purely decorative — the
+ * text beside it already says what is happening, so stopping the motion loses
+ * nothing. That is what this blanket rule does. The one exception is the
+ * indeterminate progress sweep, which is the SOLE indicator that a 17-60s job
+ * is still alive; progress.css keeps its own, more specific rule that
+ * substitutes a static bar instead of just freezing it, and that specific
+ * rule wins over this one for the properties it sets.
+ *
+ * transition-duration goes to 0.01ms rather than 0s so `transitionend` still
+ * fires — code that ever awaits it should not hang forever on an event a hard
+ * `none`/`0s` would never send.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

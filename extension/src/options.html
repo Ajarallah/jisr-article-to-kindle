@@ -6,6 +6,7 @@
   <title>جسر · الإعدادات</title>
   <link rel="stylesheet" href="fonts.css" />
   <link rel="stylesheet" href="tokens.css" />
+  <link rel="stylesheet" href="motion.css" />
   <link rel="stylesheet" href="options.css" />
 </head>
 <body>
@@ -85,6 +86,10 @@
     <section class="panel">
       <h2>تخصيص الكتاب</h2>
       <p class="hint">شكل النصّ داخل ملفّ EPUB. بعض الأجهزة قد تتجاوز الحجم والهوامش بإعداداتها الخاصّة.</p>
+      <label class="field">
+        <span class="opt"><svg class="opt-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.2"/><path d="M10.5 19 H13.5"/></svg>جهاز كندل (مقاس الغلاف)</span>
+        <select id="kindleDevice"></select>
+      </label>
       <label class="field">
         <span class="opt"><svg class="opt-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20 L12 4 L19 20"/><path d="M8.2 14 H15.8"/></svg>خطّ العربية</span>
         <select id="bookFont">
