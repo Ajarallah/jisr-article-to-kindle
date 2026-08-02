@@ -6,7 +6,7 @@ import { addHistoryEntry } from "./history.js";
 import { addToList } from "./readinglist.js";
 import { annotateHtml } from "./glossary.js";
 import { createProgress, isCancel } from "./progress.js";
-import { COVER_STYLES, coverStyle, iconUrl, suggestCoverStyle } from "./covers.js";
+import { COVER_STYLES, coverStyle, paintCoverArtwork, suggestCoverStyle, ART_BAND } from "./covers.js";
 
 const els = {
   title: document.getElementById("articleTitle"),
@@ -29,7 +29,7 @@ const els = {
   coverStyles: document.getElementById("coverStyles"),
   cover: document.querySelector(".cover"),
   embedImages: document.getElementById("embedImages"),
-  coverMotif: document.getElementById("coverMotif"),
+  coverArt: document.getElementById("coverArt"),
   suggestCoverBtn: document.getElementById("suggestCoverBtn"),
 };
 
@@ -98,35 +98,32 @@ function openAmazonLogin() {
  * label for it. Choosing one repaints the cover immediately and persists the
  * preference, because the cover above IS the artifact being configured.
  */
-// The `mask-image` technique: the SVG's alpha channel becomes a stencil over a
-// solid background-color, so one currentColor-stroked file recolors for both
-// the tiny swatch and the full-size cover motif with no separate colored asset.
-function setMask(el, style) {
-  const url = iconUrl(style);
-  const mask = url ? `url("${url}")` : "none";
-  el.style.maskImage = mask;
-  el.style.webkitMaskImage = mask;
-}
-
-// The motif sits on whichever side is "inline-end" for the ARTICLE's own
-// direction — matching paintCoverBackground's canvas math in covers.js exactly
-// (RTL bleeds off the left, LTR off the right), not the popup chrome's own
-// (always-RTL) direction.
-function applyCoverMotif(id) {
-  const style = coverStyle(id);
-  const isRtl = !article || article.dir !== "ltr";
-  setMask(els.coverMotif, style);
-  els.coverMotif.classList.toggle("side-left", isRtl);
-  els.coverMotif.classList.toggle("side-right", !isRtl);
-  els.coverMotif.style.display = style.icon ? "" : "none";
+/*
+ * Render a style's artwork band into a canvas. The popup and the EPUB call the
+ * SAME paintCoverArtwork, so a swatch is a true miniature of the artifact and
+ * cannot drift from it — the earlier CSS-twin approach could.
+ */
+async function paintPreview(canvas, styleId, w, h) {
+  const ctx = canvas.getContext("2d");
+  canvas.width = w;
+  canvas.height = h;
+  // Preview only ever draws the band, so pass a full-height canvas whose band
+  // fraction fills it.
+  await paintCoverArtwork(ctx, w, h / ART_BAND, styleId, article && article.leadImage);
 }
 
 function applyCoverStyle(id) {
   const style = coverStyle(id);
-  applyCoverMotif(style.id);
+  paintPreview(els.coverArt, style.id, 372, 132);
   for (const btn of els.coverStyles.children) {
     btn.setAttribute("aria-checked", String(btn.dataset.style === style.id));
   }
+}
+
+// Kept as a named hook because extraction reveals article.leadImage late; the
+// "صورة المقال" style has nothing to draw until then.
+function applyCoverMotif(id) {
+  applyCoverStyle(id);
 }
 
 function chooseCoverStyle(id) {
@@ -146,7 +143,10 @@ function buildCoverPicker() {
     btn.setAttribute("aria-checked", "false");
     btn.title = style.label;
     btn.setAttribute("aria-label", style.label);
-    setMask(btn, style);
+    const thumb = document.createElement("canvas");
+    thumb.className = "cover-swatch-art";
+    btn.appendChild(thumb);
+    paintPreview(thumb, style.id, 44, 58);
     btn.addEventListener("click", () => chooseCoverStyle(style.id));
     els.coverStyles.appendChild(btn);
   }

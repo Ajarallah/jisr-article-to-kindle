@@ -17,6 +17,10 @@ function slim(article) {
     url: article.url || "",
     byline: article.byline || "",
     siteName: article.siteName || "",
+    // Kept for the cover's footer plate and its optional lead-image background.
+    date: article.date || "",
+    leadImage: article.leadImage || "",
+    strategy: article.strategy || "",
     at: Date.now(),
   };
 }

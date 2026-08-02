@@ -15,7 +15,17 @@
  */
 
 import { fetchWithTimeout } from "./net.js";
-import { COVER_TEXT, COVER_FONT_RTL, COVER_FONT_LTR, COVER_FONT_WEIGHT, paintCoverBackground, ensureCoverFont } from "./covers.js";
+import {
+  COVER_ORANGE,
+  COVER_BLACK,
+  COVER_FONT_RTL,
+  COVER_FONT_LTR,
+  COVER_FONT_WEIGHT,
+  ART_BAND,
+  paintCoverArtwork,
+  paintCoverFooter,
+  ensureCoverFont,
+} from "./covers.js";
 
 // Embedding guards: keep opt-in image embedding from blowing past the 50 MB
 // Send-to-Kindle limit or exhausting memory on a gallery page.
@@ -346,63 +356,50 @@ function wrapText(ctx, text, maxWidth) {
 }
 
 /*
- * Generate a simple typographic cover (brand blue, RTL-aware) so the Kindle
- * library shows a real thumbnail with the title + source instead of a generic
+ * Generate the cover so the Kindle library shows a real jacket instead of a
  * placeholder. Returns { base64, mime } or null when canvas isn't available
  * (test harness / older environments) — in which case the book ships coverless.
+ *
+ * White paper, orange artwork, black type: a full-bleed colour cover turns into
+ * a muddy dark slab on e-ink, while white-and-black is exactly what the display
+ * is built for and the orange survives as a legible second tone. Layout is a
+ * book jacket — artwork band on top, title on the paper below it, metadata
+ * plate at the foot — not a poster.
  */
 async function generateCoverJpeg(article, isRtl, styleId) {
   if (!canUseCanvas()) return null;
   try {
     const W = 1600;
     const H = 2400;
-    const margin = 150;
-    // Same inks as the popup's cover block (see src/tokens.css --cover /
-    // --cover-text). The popup previews this image; if you change one, change both.
+    const margin = W * 0.094;
     await ensureCoverFont();
     const canvas = new OffscreenCanvas(W, H);
     const ctx = canvas.getContext("2d");
-    // Ink, then the chosen texture over it. The popup shows the same file as a
-    // CSS background, so the preview and the artifact are the one image.
-    await paintCoverBackground(ctx, W, H, styleId, isRtl);
+    await paintCoverArtwork(ctx, W, H, styleId, article.leadImage);
 
     const family = isRtl ? COVER_FONT_RTL : COVER_FONT_LTR;
     ctx.direction = isRtl ? "rtl" : "ltr";
     ctx.textAlign = isRtl ? "right" : "left";
     const x = isRtl ? W - margin : margin;
 
-    // Wordmark, mirroring the popup's cover-top row.
-    ctx.fillStyle = COVER_TEXT;
-    ctx.font = `${COVER_FONT_WEIGHT} 62px ${family}`;
-    ctx.globalAlpha = 0.9;
-    ctx.fillText("جسر", x, margin + 60);
-    ctx.globalAlpha = 1;
+    // Wordmark, small and orange, sitting just under the artwork band.
+    const bandBottom = H * ART_BAND;
+    ctx.fillStyle = COVER_ORANGE;
+    ctx.font = `${COVER_FONT_WEIGHT} 54px ${family}`;
+    ctx.fillText("جسر", x, bandBottom + margin * 0.62);
 
-    ctx.font = `${COVER_FONT_WEIGHT} 104px ${family}`;
-    const lines = wrapText(ctx, article.title || "بدون عنوان", W - margin * 2).slice(0, 8);
-    let y = 620;
+    // Title: black, the loudest thing on the cover. Line count is capped so a
+    // long headline cannot run into the footer plate.
+    ctx.fillStyle = COVER_BLACK;
+    ctx.font = `${COVER_FONT_WEIGHT} 112px ${family}`;
+    const lines = wrapText(ctx, article.title || "بدون عنوان", W - margin * 2).slice(0, 7);
+    let y = bandBottom + margin * 1.75;
     for (const ln of lines) {
       ctx.fillText(ln, x, y);
-      y += 146;
+      y += 152;
     }
 
-    let host = article.siteName || "";
-    if (!host && article.url) {
-      try {
-        host = new URL(article.url).hostname.replace(/^www\./, "");
-      } catch (e) {
-        host = "";
-      }
-    }
-    if (host) {
-      // Hairline above the source line — the printed rule the popup draws too.
-      ctx.globalAlpha = 0.5;
-      ctx.fillRect(margin, H - 330, W - margin * 2, 5);
-      ctx.globalAlpha = 0.92;
-      ctx.font = `50px ${family}`;
-      ctx.fillText(host, x, H - 245);
-      ctx.globalAlpha = 1;
-    }
+    await paintCoverFooter(ctx, W, H, article, isRtl);
 
     const out = await canvas.convertToBlob({ type: "image/jpeg", quality: 0.85 });
     return { base64: await blobToBase64(out), mime: "image/jpeg" };
@@ -674,7 +671,17 @@ async function buildBook(articles, opts = {}) {
     opts.includeCover === false
       ? null
       : await generateCoverJpeg(
-          { title: bookTitle, siteName: articles.length > 1 ? `${articles.length} مقالات` : articles[0].siteName, url: articles[0].url },
+          {
+            title: bookTitle,
+            siteName: articles.length > 1 ? `${articles.length} مقالات` : articles[0].siteName,
+            url: articles[0].url,
+            // A compilation credits itself; a single-article book keeps the
+            // article's own author and date on the jacket.
+            byline: articles.length > 1 ? "" : articles[0].byline || "",
+            date: articles.length > 1 ? "" : articles[0].date || "",
+            leadImage: articles.length > 1 ? "" : articles[0].leadImage || "",
+            strategy: articles.length > 1 ? "collection" : articles[0].strategy,
+          },
           bookDir === "rtl",
           opts.coverStyle
         );

@@ -20,6 +20,9 @@ const browser = {
   NodeFilter: "readonly",
   OffscreenCanvas: "readonly",
   createImageBitmap: "readonly",
+  // Cover icons are rasterised through <img>.decode(), not createImageBitmap —
+  // Chrome refuses to decode an SVG blob through the latter (see covers.js).
+  Image: "readonly",
   FileReader: "readonly",
   structuredClone: "readonly",
   btoa: "readonly",

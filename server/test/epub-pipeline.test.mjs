@@ -163,10 +163,18 @@ test("cover generation: when canvas is available, EPUB carries a cover image + m
   g.OffscreenCanvas = class {
     constructor(w, h) { this.width = w; this.height = h; }
     getContext() {
+      // The cover painter uses clipping, transforms and gradients; a shim that
+      // omits any of them throws, and generateCoverJpeg's catch would swallow
+      // it into a silently coverless book — which is what this test guards.
       return {
-        fillRect() {}, drawImage() {}, fillText() {},
+        fillRect() {}, drawImage() {}, fillText() {}, strokeRect() {},
+        beginPath() {}, closePath() {}, moveTo() {}, lineTo() {}, arc() {},
+        fill() {}, stroke() {}, clip() {}, rect() {}, save() {}, restore() {},
+        createLinearGradient() { return { addColorStop() {} }; },
         measureText(t) { return { width: String(t).length * 12 }; },
-        set fillStyle(_v) {}, set font(_v) {}, set direction(_v) {}, set textAlign(_v) {},
+        set fillStyle(_v) {}, set strokeStyle(_v) {}, set font(_v) {},
+        set direction(_v) {}, set textAlign(_v) {}, set textBaseline(_v) {},
+        set lineWidth(_v) {}, set lineCap(_v) {}, set globalAlpha(_v) {},
       };
     }
     async convertToBlob() { return new Blob([new Uint8Array([1, 2, 3])], { type: "image/jpeg" }); }

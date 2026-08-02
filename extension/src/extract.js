@@ -191,6 +191,26 @@
     return (doc.title || "Untitled").trim();
   }
 
+  // The article's lead image (og:image / twitter:image / JSON-LD). Read from the
+  // live DOM, so it is already whatever the page actually rendered. Used as the
+  // cover background when the user asks for it — a separate concern from the
+  // inline images inside the article body, which epub.js embeds.
+  function metaImage(doc, ld) {
+    var sel = 'meta[property="og:image"], meta[property="og:image:url"], meta[name="twitter:image"], meta[name="twitter:image:src"]';
+    var m = doc.querySelector(sel);
+    if (m && m.content && m.content.trim()) {
+      try { return new URL(m.content.trim(), location.href).href; } catch (e) {}
+    }
+    if (ld && ld.image) {
+      var i = ld.image;
+      var raw = typeof i === "string" ? i : Array.isArray(i) ? (i[0] && (i[0].url || i[0])) : i.url;
+      if (raw) {
+        try { return new URL(String(raw), location.href).href; } catch (e) {}
+      }
+    }
+    return "";
+  }
+
   // Parse the page's JSON-LD once; return the first object that looks like an
   // Article (has datePublished/author/headline).
   function jsonLd(doc) {
@@ -296,6 +316,7 @@
       dir: dir === "rtl" ? "rtl" : "ltr",
       url: location.href,
       excerpt: (article && article.excerpt) || "",
+      leadImage: metaImage(document, ld),
       content: content,
       textLength: dirText.trim().length,
       strategy: useMain ? "main-region" : "readability",
