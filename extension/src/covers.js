@@ -20,6 +20,8 @@
  *     faded toward the title so the type never sits on busy pixels.
  */
 
+import { imageOriginPattern } from "./settings.js";
+
 export const COVER_PAPER = "#FBFAF7";
 export const COVER_ORANGE = "#CB3F28";
 export const COVER_BLACK = "#141210";
@@ -193,7 +195,11 @@ const PATTERNS = {
 };
 
 // `image` means "use the article's own og:image"; it has no pattern function.
+// Listed first: it is now the default cover style (see DEFAULT_SETTINGS in
+// settings.js), since a real lead image beats an abstract pattern whenever the
+// article actually published one.
 export const COVER_STYLES = [
+  { id: "image", label: "صورة المقال", pattern: null, usesLeadImage: true },
   { id: "plain", label: "سادة", pattern: null },
   { id: "rules", label: "مسطَّر", pattern: "rules" },
   { id: "dots", label: "منقَّط", pattern: "dots" },
@@ -203,60 +209,22 @@ export const COVER_STYLES = [
   { id: "column", label: "أعمدة", pattern: "column" },
   { id: "crosses", label: "علامات", pattern: "crosses" },
   { id: "arch", label: "قوس", pattern: "arch" },
-  { id: "image", label: "صورة المقال", pattern: null, usesLeadImage: true },
 ];
 
 export function coverStyle(id) {
   return COVER_STYLES.find((s) => s.id === id) || COVER_STYLES[0];
 }
 
-/*
- * Keywords that lean a title toward a particular pattern. These are moods, not
- * subjects: the patterns are abstract, so the mapping asks "does this article
- * feel ordered, or dense, or expansive" rather than "is it about biology".
- * A title matching nothing falls through to a random pick, which is the point
- * of the button — it proposes, it does not classify.
- */
-const STYLE_MOODS = {
-  rules: ["دراسة", "بحث", "تقرير", "تحليل", "منهج", "study", "research", "report", "analysis", "method", "paper"],
-  dots: ["بيانات", "إحصاء", "شبكة", "نموذج", "ذكاء", "data", "statistics", "network", "model", "ai", "machine"],
-  arcs: ["تاريخ", "نشأة", "أصل", "تطور", "مستقبل", "history", "origin", "evolution", "future", "rise"],
-  weave: ["مجتمع", "علاقة", "لغة", "ثقافة", "ترابط", "society", "language", "culture", "relation", "complex"],
-  frames: ["فلسفة", "فكر", "وعي", "إدراك", "معنى", "philosophy", "mind", "consciousness", "meaning", "theory"],
-  column: ["اقتصاد", "سوق", "نمو", "مال", "أعمال", "economy", "market", "growth", "money", "business"],
-  crosses: ["تقنية", "برمجة", "هندسة", "خوارزم", "نظام", "technology", "software", "engineering", "algorithm", "system"],
-  arch: ["طبيعة", "كون", "فضاء", "بيئة", "حياة", "nature", "universe", "space", "environment", "life"],
-};
-
-/*
- * Pick a style for "إنشاء غلاف": score each pattern by how many of its mood
- * words appear in the title, then choose randomly among the leaders. Ties —
- * including the common case where nothing matches and every pattern ties at
- * zero — resolve by chance rather than by silently favouring array order, so
- * pressing the button twice on an unmatched title gives two different covers.
- * "plain" and "image" are excluded: one is the absence of a choice, the other
- * depends on an image the page may not have.
- */
-export function suggestCoverStyle(title) {
-  const text = (title || "").toLowerCase();
-  const ids = Object.keys(STYLE_MOODS);
-  const scored = ids.map((id) => ({
-    id,
-    score: STYLE_MOODS[id].reduce((n, k) => n + (text.includes(k.toLowerCase()) ? 1 : 0), 0),
-  }));
-  const top = Math.max(...scored.map((s) => s.score));
-  const leaders = top > 0 ? scored.filter((s) => s.score === top) : scored;
-  const pick = leaders[Math.floor(Math.random() * leaders.length)];
-  return (pick && pick.id) || "rules";
-}
-
 // Fraction of the cover height the artwork band occupies.
 export const ART_BAND = 0.46;
 
 /*
- * Draw the artwork band. Returns nothing; the caller lays type out below it.
- * `leadImage` is only consulted for the style that asks for it, and a failure to
- * load falls through to the plain ground rather than aborting the cover.
+ * Draw the artwork band. Returns a result object describing what happened —
+ * { ok: true } on success, { ok: false, reason } otherwise — so the caller
+ * (the popup, mainly) can show *why* the band came out blank instead of
+ * leaving the user staring at plain white with no explanation. `leadImage` is
+ * only consulted for the style that asks for it; a failure there falls through
+ * to the plain paper ground rather than aborting the whole cover.
  */
 export async function paintCoverArtwork(ctx, W, H, styleId, leadImage) {
   const style = coverStyle(styleId);
@@ -265,13 +233,13 @@ export async function paintCoverArtwork(ctx, W, H, styleId, leadImage) {
   ctx.fillStyle = COVER_PAPER;
   ctx.fillRect(0, 0, W, H);
 
-  if (style.usesLeadImage && leadImage) {
-    const ok = await paintLeadImage(ctx, W, bandH, leadImage);
-    if (ok) return;
+  if (style.usesLeadImage) {
+    const candidates = Array.isArray(leadImage) ? leadImage : leadImage ? [leadImage] : [];
+    return paintLeadImage(ctx, W, bandH, candidates);
   }
 
   const draw = style.pattern && PATTERNS[style.pattern];
-  if (!draw) return;
+  if (!draw) return { ok: true };
 
   ctx.save();
   ctx.beginPath();
@@ -281,36 +249,107 @@ export async function paintCoverArtwork(ctx, W, H, styleId, leadImage) {
   ctx.strokeStyle = COVER_ORANGE;
   draw(ctx, W, bandH);
   ctx.restore();
+  return { ok: true };
 }
 
 /*
- * The article's lead image, cropped to fill the band and faded out along its
- * lower edge so the black title below never abuts hard pixels.
+ * Whether we're allowed to fetch an image URL's host. Outside the extension
+ * (Node tests, or any environment without chrome.permissions) there is nothing
+ * to check, so treat it as permitted and let fetch() itself succeed or fail —
+ * this keeps the function usable in the test harness without a chrome shim.
  */
-async function paintLeadImage(ctx, W, bandH, url) {
+async function hasImagePermission(url) {
   try {
-    const resp = await fetch(url);
-    if (!resp.ok) return false;
-    const bitmap = await createImageBitmap(await resp.blob());
-    const scale = Math.max(W / bitmap.width, bandH / bitmap.height);
-    const w = bitmap.width * scale;
-    const h = bitmap.height * scale;
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(0, 0, W, bandH);
-    ctx.clip();
-    ctx.drawImage(bitmap, (W - w) / 2, (bandH - h) / 2, w, h);
-    const fade = ctx.createLinearGradient(0, bandH * 0.72, 0, bandH);
-    fade.addColorStop(0, "rgba(251,250,247,0)");
-    fade.addColorStop(1, COVER_PAPER);
-    ctx.fillStyle = fade;
-    ctx.fillRect(0, bandH * 0.72, W, bandH * 0.28);
-    ctx.restore();
-    if (bitmap.close) bitmap.close();
-    return true;
+    if (typeof chrome === "undefined" || !chrome.permissions || !chrome.permissions.contains) return true;
+    const pattern = imageOriginPattern(url);
+    if (!pattern) return true; // non-http(s) (e.g. a data: URL) needs no permission
+    return await chrome.permissions.contains({ origins: [pattern] });
   } catch {
-    return false;
+    return true;
   }
+}
+
+/*
+ * Crop a decoded bitmap to fill the band and fade its lower edge so the black
+ * title below never abuts hard pixels. Split out from paintLeadImage so trying
+ * several candidates in turn doesn't duplicate the drawing logic.
+ */
+function drawLeadBitmap(ctx, W, bandH, bitmap) {
+  const scale = Math.max(W / bitmap.width, bandH / bitmap.height);
+  const w = bitmap.width * scale;
+  const h = bitmap.height * scale;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, W, bandH);
+  ctx.clip();
+  // Kindle covers are read at print resolution, and the source image is
+  // usually smaller than the band it's stretched to fill — smooth resampling
+  // instead of the browser's default (which can look blocky at this scale).
+  if ("imageSmoothingQuality" in ctx) ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(bitmap, (W - w) / 2, (bandH - h) / 2, w, h);
+  const fade = ctx.createLinearGradient(0, bandH * 0.72, 0, bandH);
+  fade.addColorStop(0, "rgba(251,250,247,0)");
+  fade.addColorStop(1, COVER_PAPER);
+  ctx.fillStyle = fade;
+  ctx.fillRect(0, bandH * 0.72, W, bandH * 0.28);
+  ctx.restore();
+}
+
+/*
+ * The article's lead image, cropped to fill the band. Tries `candidates` (an
+ * ordered list of URLs — see extract.js's leadImageCandidates) in turn and
+ * accepts the first that decodes to a bitmap at least as wide as the band
+ * itself; if none clears that bar, falls back to the widest one that decoded
+ * at all rather than shipping a blank band over a merely-small image.
+ *
+ * Four independent things can go wrong before a pixel ever gets drawn, and the
+ * caller needs to know which: no candidates were offered at all, the image's
+ * host was never granted permission (og:image routinely lives on a different
+ * CDN host than the article itself), the fetch failed (network/CORS/404), or
+ * the bytes fetched didn't decode as an image. A bare boolean collapsed all
+ * four into "blank band, no clue why" — this returns which one happened.
+ */
+async function paintLeadImage(ctx, W, bandH, candidates) {
+  const list = (candidates || []).filter(Boolean);
+  if (!list.length) return { ok: false, reason: "no-candidates" };
+
+  let sawPermitted = false;
+  let sawFetched = false;
+  let widest = null; // { bitmap, width } — best decoded bitmap so far, kept as a fallback
+
+  for (const url of list) {
+    if (!(await hasImagePermission(url))) continue;
+    sawPermitted = true;
+    let bitmap;
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) continue;
+      sawFetched = true;
+      bitmap = await createImageBitmap(await resp.blob());
+    } catch {
+      continue;
+    }
+    if (bitmap.width >= W) {
+      drawLeadBitmap(ctx, W, bandH, bitmap);
+      if (bitmap.close) bitmap.close();
+      return { ok: true };
+    }
+    if (!widest || bitmap.width > widest.width) {
+      if (widest && widest.bitmap.close) widest.bitmap.close();
+      widest = { bitmap, width: bitmap.width };
+    } else if (bitmap.close) {
+      bitmap.close();
+    }
+  }
+
+  if (widest) {
+    drawLeadBitmap(ctx, W, bandH, widest.bitmap);
+    if (widest.bitmap.close) widest.bitmap.close();
+    return { ok: true };
+  }
+  if (!sawPermitted) return { ok: false, reason: "no-permission" };
+  if (!sawFetched) return { ok: false, reason: "fetch-failed" };
+  return { ok: false, reason: "decode-failed" };
 }
 
 /* ── footer metadata ─────────────────────────────────────────────────────── */
