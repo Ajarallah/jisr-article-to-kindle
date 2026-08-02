@@ -41,13 +41,37 @@
     hint.remove();
     window.__a2kPicker = false;
   }
+  // The page's own lead image (og:image / twitter:image), so a manually-picked
+  // region can still carry a real cover photo instead of always falling back
+  // to a pattern — the picker only replaces content selection, not the page's
+  // metadata.
+  function pageLeadImage() {
+    var sel = 'meta[property="og:image"], meta[property="og:image:url"], meta[name="twitter:image"], meta[name="twitter:image:src"]';
+    var m = document.querySelector(sel);
+    if (!m || !m.content || !m.content.trim()) return "";
+    try {
+      return new URL(m.content.trim(), location.href).href;
+    } catch (e) {
+      return "";
+    }
+  }
+
   function onClick(e) {
     if (!last) return;
     e.preventDefault();
     e.stopPropagation();
     var text = (last.textContent || "").trim();
     chrome.storage.local.set(
-      { a2k_picked: { html: last.innerHTML || "", text: text, url: location.href, title: document.title, at: Date.now() } },
+      {
+        a2k_picked: {
+          html: last.innerHTML || "",
+          text: text,
+          url: location.href,
+          title: document.title,
+          leadImage: pageLeadImage(),
+          at: Date.now(),
+        },
+      },
       cleanup
     );
   }
