@@ -5,6 +5,7 @@ import { loadSettings, sanitizeFilename, originPattern, bookOptions } from "./se
 import { addHistoryEntry } from "./history.js";
 import { addToList } from "./readinglist.js";
 import { annotateHtml } from "./glossary.js";
+import { createProgress, isCancel } from "./progress.js";
 
 const els = {
   title: document.getElementById("articleTitle"),
@@ -23,21 +24,12 @@ const els = {
   downloadBtn: document.getElementById("downloadBtn"),
   settingsBtn: document.getElementById("settingsBtn"),
   status: document.getElementById("status"),
-  progress: document.getElementById("progress"),
-  progressStage: document.getElementById("progressStage"),
-  progressCount: document.getElementById("progressCount"),
-  progressBar: document.getElementById("progressBar"),
-  progressFill: document.getElementById("progressFill"),
-  cancelBtn: document.getElementById("cancelBtn"),
   actions: document.getElementById("actions"),
 };
 
 let article = null;
 let settings = null;
-// The controller for whatever long job is running, so the cancel button has
-// something real to abort. translate.js/glossary.js/deliver.js all accept a
-// signal — until now nothing passed one, so "cancel" was not possible at all.
-let job = null;
+const progress = createProgress({ mountAfter: document.getElementById("actions"), actions: document.getElementById("actions") });
 
 function setStatus(kind, html) {
   els.status.className = "status " + kind;
@@ -48,53 +40,7 @@ function clearStatus() {
   els.status.classList.add("hidden");
 }
 
-/*
- * Progress for the long jobs. Nielsen's 10-second limit asks for a percent-done
- * indicator plus a signposted way to interrupt; translation alone runs 17-60s.
- * Stages that cannot report a fraction (building, sending) sweep instead of
- * inventing a number.
- */
-function startJob(stage) {
-  job = new AbortController();
-  clearStatus();
-  // The progress block REPLACES the actions row rather than stacking under it:
-  // a greyed-out disabled button reads as broken, and two competing affordances
-  // (dead button + live progress) split attention during the wait.
-  els.actions.classList.add("hidden");
-  els.progress.classList.remove("hidden");
-  setStage(stage);
-}
 
-function setStage(stage, done, total) {
-  els.progressStage.textContent = stage;
-  const known = Number.isFinite(done) && Number.isFinite(total) && total > 1;
-  const track = els.progressBar;
-  track.classList.toggle("indeterminate", !known);
-  if (known) {
-    const pct = Math.round((done / total) * 100);
-    els.progressFill.style.width = pct + "%";
-    els.progressCount.textContent = `${done.toLocaleString("ar")}/${total.toLocaleString("ar")}`;
-    track.setAttribute("aria-valuenow", String(pct));
-  } else {
-    els.progressFill.style.width = "";
-    els.progressCount.textContent = "";
-    track.removeAttribute("aria-valuenow");
-  }
-}
-
-function endJob() {
-  job = null;
-  els.progress.classList.add("hidden");
-  els.progressFill.style.width = "";
-  els.actions.classList.remove("hidden");
-  els.sendBtn.disabled = false;
-  els.downloadBtn.disabled = false;
-}
-
-// An aborted job is the user's own doing — report it plainly, not as an error.
-function isCancel(e) {
-  return e && (e.name === "AbortError" || /ألغيت/.test(e.message || ""));
-}
 
 // Lightweight direction detector for picked regions (extract.js's own detector
 // isn't reachable here). RTL when a meaningful share of letters are RTL.
@@ -227,7 +173,7 @@ function activeArticle() {
 }
 
 async function translateArticle(art, targetLang) {
-  if (!settings.translationKey) throw new Error("الترجمة غير متاحة — لا يوجد مفتاح ترجمة في هذه النسخة.");
+  if (!settings.translationKey) throw new Error("الترجمة غير متاحة: لا مفتاح ترجمة في هذه النسخة.");
   const out = await translateHtml(
     { title: art.title, html: art.content, targetLang },
     {
@@ -237,9 +183,9 @@ async function translateArticle(art, targetLang) {
       endpoint: settings.translationEndpoint,
     },
     {
-      signal: job ? job.signal : undefined,
+      signal: progress.signal,
       bilingual: els.bilingualToggle && els.bilingualToggle.checked,
-      onProgress: (done, total) => setStage("جارٍ الترجمة", done, total),
+      onProgress: (done, total) => progress.stage("جارٍ الترجمة", done, total),
     }
   );
   return { ...art, title: out.title || art.title, content: out.html || art.content, dir: out.dir || art.dir, lang: out.lang || art.lang };
@@ -264,20 +210,20 @@ async function prepareArticle(embedImages) {
   const base = activeArticle();
   let art = base;
   if (els.translateToggle.checked) {
-    setStage("جارٍ الترجمة");
+    progress.stage("جارٍ الترجمة");
     art = await translateArticle(base, els.targetLang.value);
   }
   if (els.glossaryToggle && els.glossaryToggle.checked) {
-    if (!settings.translationKey) throw new Error("المسرد غير متاح — لا يوجد مفتاح ترجمة في هذه النسخة.");
-    setStage("جارٍ إعداد المسرد الدراسي");
+    if (!settings.translationKey) throw new Error("المسرد غير متاح: لا مفتاح ترجمة في هذه النسخة.");
+    progress.stage("جارٍ إعداد المسرد الدراسي");
     const annotated = await annotateHtml(
       art.content,
       { apiKey: settings.translationKey, model: settings.translationModel, endpoint: settings.translationEndpoint },
-      { targetLang: els.targetLang.value, signal: job ? job.signal : undefined }
+      { targetLang: els.targetLang.value, signal: progress.signal }
     );
     art = { ...art, content: annotated };
   }
-  setStage("جارٍ بناء ملفّ EPUB");
+  progress.stage("جارٍ بناء ملفّ EPUB");
   const blob = await buildEpub(art, bookOptions(settings, { embedImages }));
   return { art, blob };
 }
@@ -285,25 +231,25 @@ async function prepareArticle(embedImages) {
 async function onSend() {
   if (!article) return;
   const embedImages = await ensureImagePermission();
-  startJob("جارٍ التحضير");
+  progress.start("جارٍ التحضير");
   try {
     const { art, blob } = await prepareArticle(embedImages);
-    setStage("جارٍ الإرسال إلى كندل");
+    progress.stage("جارٍ الإرسال إلى كندل");
     await sendEpubToKindle({
       blob,
       title: art.title,
       author: art.byline || art.siteName || "",
       domain: settings.amazonDomain,
-      signal: job ? job.signal : undefined,
+      signal: progress.signal,
     });
-    endJob();
-    setStatus("ok", "تم الإرسال إلى مكتبة كندل. سيظهر على جهازك خلال دقائق.");
+    progress.end();
+    setStatus("ok", "أُرسل إلى مكتبة كندل. سيظهر على جهازك خلال دقائق.");
     addHistoryEntry({ title: art.title, url: art.url, site: art.siteName });
     refreshDeliveryInfo();
   } catch (e) {
-    endJob();
+    progress.end();
     if (isCancel(e)) {
-      setStatus("info", "أُلغيت العملية.");
+      setStatus("info", "ألغيت الإرسال.");
       return;
     }
     const msg = e.message || String(e);
@@ -332,20 +278,20 @@ async function onSend() {
 async function onDownload() {
   if (!article) return;
   const embedImages = await ensureImagePermission();
-  startJob("جارٍ التحضير");
+  progress.start("جارٍ التحضير");
   try {
     const { art, blob } = await prepareArticle(embedImages);
-    endJob();
+    progress.end();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = sanitizeFilename(art.title) + ".epub";
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
-    setStatus("ok", "تم تنزيل ملفّ EPUB.");
+    setStatus("ok", "نُزّل ملفّ EPUB.");
   } catch (e) {
-    endJob();
-    setStatus(isCancel(e) ? "info" : "err", isCancel(e) ? "أُلغيت العملية." : e.message);
+    progress.end();
+    setStatus(isCancel(e) ? "info" : "err", isCancel(e) ? "ألغيت التنزيل." : e.message);
   }
 }
 
@@ -356,11 +302,11 @@ els.translateToggle.addEventListener("change", () => {
 async function onPreview() {
   if (!article) return;
   const embedImages = await ensureImagePermission();
-  startJob("جارٍ التحضير");
+  progress.start("جارٍ التحضير");
   try {
     let art = activeArticle();
     if (els.translateToggle.checked) {
-      setStage("جارٍ الترجمة");
+      progress.stage("جارٍ الترجمة");
       art = await translateArticle(art, els.targetLang.value);
     }
     await chrome.storage.local.set({
@@ -380,18 +326,15 @@ async function onPreview() {
         domain: settings.amazonDomain,
       },
     });
-    endJob();
+    progress.end();
     clearStatus();
     chrome.tabs.create({ url: chrome.runtime.getURL("src/preview.html") });
   } catch (e) {
-    endJob();
-    setStatus(isCancel(e) ? "info" : "err", isCancel(e) ? "أُلغيت العملية." : e.message || String(e));
+    progress.end();
+    setStatus(isCancel(e) ? "info" : "err", isCancel(e) ? "ألغيت المعاينة." : e.message || String(e));
   }
 }
 
-els.cancelBtn.addEventListener("click", () => {
-  if (job) job.abort();
-});
 els.settingsBtn.addEventListener("click", () => chrome.runtime.openOptionsPage());
 const previewBtn = document.getElementById("previewBtn");
 if (previewBtn) previewBtn.addEventListener("click", onPreview);

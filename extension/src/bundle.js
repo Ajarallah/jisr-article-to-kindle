@@ -3,6 +3,7 @@ import { sendEpubToKindle } from "./deliver.js";
 import { loadSettings, sanitizeFilename, bookOptions } from "./settings.js";
 import { getList, removeAt, clearList } from "./readinglist.js";
 import { addHistoryEntry } from "./history.js";
+import { createProgress, isCancel } from "./progress.js";
 
 const els = {
   listItems: document.getElementById("listItems"),
@@ -14,6 +15,8 @@ const els = {
 
 let settings = null;
 let list = [];
+// A real tab, so no "keep this open" warning.
+const progress = createProgress({ mountAfter: els.status, actions: document.getElementById("actions"), warn: false });
 
 function setStatus(kind, html) {
   els.status.className = "status " + kind;
@@ -70,33 +73,33 @@ function render() {
 }
 
 async function buildBlob() {
-  setStatus("working", '<span class="spinner"></span>جارٍ بناء الكتاب…');
+  progress.stage("جارٍ بناء الكتاب");
   return buildBook(list, bookOptions(settings, { title: list.length === 1 ? list[0].title : `مجموعة قراءة · ${list.length} مقالات` }));
 }
 
 async function onSend() {
   if (!list.length) return;
-  setBusy(true);
+  progress.start("جارٍ بناء الكتاب");
   try {
     const blob = await buildBlob();
-    setStatus("working", '<span class="spinner"></span>جارٍ الإرسال إلى كندل…');
+    progress.stage("جارٍ الإرسال إلى كندل");
     const title = list.length === 1 ? list[0].title : `مجموعة قراءة (${list.length})`;
-    await sendEpubToKindle({ blob, title, author: "جسر", domain: settings.amazonDomain });
+    await sendEpubToKindle({ blob, title, author: "جسر", domain: settings.amazonDomain, signal: progress.signal });
+    progress.end();
     addHistoryEntry({ title, site: `كتاب · ${list.length} مقالات` });
     setStatus("ok", "أُرسل الكتاب إلى مكتبة كندل. سيظهر على جهازك خلال دقائق.");
   } catch (e) {
-    const msg = e.message || String(e);
-    setStatus("err", msg);
-  } finally {
-    setBusy(false);
+    progress.end();
+    setStatus(isCancel(e) ? "info" : "err", isCancel(e) ? "ألغيت الإرسال." : e.message || String(e));
   }
 }
 
 async function onDownload() {
   if (!list.length) return;
-  setBusy(true);
+  progress.start("جارٍ بناء الكتاب");
   try {
     const blob = await buildBlob();
+    progress.end();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -104,11 +107,10 @@ async function onDownload() {
     a.download = sanitizeFilename(name, "reading-list") + ".epub";
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
-    setStatus("ok", "تم تنزيل الكتاب.");
+    setStatus("ok", "نُزّل الكتاب.");
   } catch (e) {
-    setStatus("err", e.message || String(e));
-  } finally {
-    setBusy(false);
+    progress.end();
+    setStatus(isCancel(e) ? "info" : "err", isCancel(e) ? "ألغيت التنزيل." : e.message || String(e));
   }
 }
 

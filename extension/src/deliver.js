@@ -22,7 +22,7 @@ const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
 // than the small JSON control calls.
 const UPLOAD_TIMEOUT_MS = 120000;
 
-const OFFLINE_MSG = "تعذّر الوصول إلى أمازون — تحقّق من اتصالك بالإنترنت وأعد المحاولة.";
+const OFFLINE_MSG = "تعذّر الوصول إلى أمازون. تحقّق من اتصالك بالإنترنت وأعد المحاولة.";
 const TIMEOUT_MSG = "انتهت مهلة الاتصال بأمازون. أعد المحاولة.";
 const SIGNIN_MSG = "لست مسجّلًا دخولك في أمازون. افتح amazon.com وسجّل الدخول ثم أعد المحاولة.";
 
@@ -188,7 +188,7 @@ export async function sendEpubToKindle({ blob, title, author, domain, archive = 
   // at the opaque S3 stage with no clear cause.
   if (fileSize > MAX_UPLOAD_BYTES) {
     const mb = (fileSize / (1024 * 1024)).toFixed(1);
-    throw new Error(`الملفّ كبير جدًّا (${mb} ميغابايت). الحدّ الأقصى ٥٠ ميغابايت — جرّب بدون تضمين الصور.`);
+    throw new Error(`الملفّ كبير جدًّا (${mb} ميغابايت). الحدّ الأقصى ٥٠ ميغابايت، فجرّب بدون تضمين الصور.`);
   }
 
   // 1) init -> presigned S3 upload URL + stkToken

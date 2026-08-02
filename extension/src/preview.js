@@ -2,6 +2,7 @@ import { buildEpub } from "./epub.js";
 import { sendEpubToKindle } from "./deliver.js";
 import { sanitizeFilename, loadSettings, bookOptions } from "./settings.js";
 import { addHistoryEntry } from "./history.js";
+import { createProgress, isCancel } from "./progress.js";
 
 const els = {
   frame: document.getElementById("preview"),
@@ -13,6 +14,13 @@ const els = {
 
 let article = null;
 let settings = null;
+// A real tab, so no "keep this open" warning; the bar's action row steps aside
+// while the job runs.
+const progress = createProgress({
+  mountAfter: document.getElementById("status"),
+  actions: document.getElementById("actions"),
+  warn: false,
+});
 
 function buildOpts() {
   return bookOptions(settings || {}, { embedImages: !!article.embedImages });
@@ -61,43 +69,41 @@ function renderDoc(art) {
 
 async function onSend() {
   if (!article) return;
-  els.sendBtn.disabled = true;
-  els.downloadBtn.disabled = true;
+  progress.start("جارٍ بناء ملفّ EPUB");
   try {
-    setStatus("working", '<span class="spinner"></span>جارٍ بناء ملفّ EPUB…');
     const blob = await buildEpub(article, buildOpts());
-    setStatus("working", '<span class="spinner"></span>جارٍ الإرسال إلى كندل…');
-    await sendEpubToKindle({ blob, title: article.title, author: article.author || "", domain: article.domain });
-    setStatus("ok", "تم الإرسال إلى مكتبة كندل. سيظهر على جهازك خلال دقائق.");
+    progress.stage("جارٍ الإرسال إلى كندل");
+    await sendEpubToKindle({ blob, title: article.title, author: article.author || "", domain: article.domain, signal: progress.signal });
+    progress.end();
+    setStatus("ok", "أُرسل إلى مكتبة كندل. سيظهر على جهازك خلال دقائق.");
     addHistoryEntry({ title: article.title, url: article.url, site: article.siteName });
   } catch (e) {
+    progress.end();
+    if (isCancel(e)) {
+      setStatus("info", "ألغيت الإرسال.");
+      return;
+    }
     const msg = e.message || String(e);
     setStatus("err", /سجّل الدخول|مسجّل/.test(msg) ? "لست مسجّلًا دخولك في أمازون. افتح amazon.com وسجّل الدخول ثم أعد المحاولة." : msg);
-  } finally {
-    els.sendBtn.disabled = false;
-    els.downloadBtn.disabled = false;
   }
 }
 
 async function onDownload() {
   if (!article) return;
-  els.sendBtn.disabled = true;
-  els.downloadBtn.disabled = true;
+  progress.start("جارٍ بناء ملفّ EPUB");
   try {
-    setStatus("working", '<span class="spinner"></span>جارٍ بناء ملفّ EPUB…');
     const blob = await buildEpub(article, buildOpts());
+    progress.end();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = sanitizeFilename(article.title) + ".epub";
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
-    setStatus("ok", "تم تنزيل ملفّ EPUB.");
+    setStatus("ok", "نُزّل ملفّ EPUB.");
   } catch (e) {
-    setStatus("err", e.message);
-  } finally {
-    els.sendBtn.disabled = false;
-    els.downloadBtn.disabled = false;
+    progress.end();
+    setStatus(isCancel(e) ? "info" : "err", isCancel(e) ? "ألغيت التنزيل." : e.message);
   }
 }
 

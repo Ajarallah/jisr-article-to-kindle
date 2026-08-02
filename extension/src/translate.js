@@ -249,8 +249,8 @@ async function complete(segments, targetLang, cfg, model, signal, pacer) {
     const timedOut = e && e.name === "TimeoutError";
     const err = new Error(
       timedOut
-        ? "انتهت مهلة الاتصال بخدمة الترجمة — أعد المحاولة."
-        : "تعذّر الاتصال بخدمة الترجمة — تحقّق من اتصالك."
+        ? "انتهت مهلة الاتصال بخدمة الترجمة. أعد المحاولة."
+        : "تعذّر الاتصال بخدمة الترجمة. تحقّق من اتصالك."
     );
     // A timeout means this model is not answering at all — hammering it twice
     // more just burns another 2×30s before the fallback gets its turn. Go to the

@@ -94,7 +94,7 @@ async function save() {
     includeCover: els.includeCover.checked,
     cleanArabic: els.cleanArabic.checked,
   });
-  setStatus("ok", "تم حفظ الإعدادات.");
+  setStatus("ok", "حُفظت الإعدادات.");
 }
 
 els.detectDomainBtn.addEventListener("click", async () => {
@@ -104,7 +104,7 @@ els.detectDomainBtn.addEventListener("click", async () => {
     const found = await detectAmazonDomain();
     if (found) {
       els.amazonDomain.value = found;
-      setStatus("ok", `وُجد: ${found} — اضغط «حفظ الإعدادات» لاعتماده.`);
+      setStatus("ok", `وُجد: ${found}. اضغط «حفظ الإعدادات» لاعتماده.`);
     } else {
       setStatus("err", "لم أجد نطاقًا مسجّلًا. سجّل الدخول في أمازون أولًا.");
     }

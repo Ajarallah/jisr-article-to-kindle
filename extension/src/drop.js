@@ -4,6 +4,7 @@ import { sendEpubToKindle } from "./deliver.js";
 import { fileToArticle, isSupported } from "./dropconvert.js";
 import { loadSettings, sanitizeFilename, bookOptions } from "./settings.js";
 import { addHistoryEntry } from "./history.js";
+import { createProgress, isCancel } from "./progress.js";
 
 const els = {
   dropzone: document.getElementById("dropzone"),
@@ -24,6 +25,8 @@ const els = {
 
 let article = null;
 let settings = null;
+// Shared waiting state — a real tab, so no "keep this open" warning is needed.
+const progress = createProgress({ mountAfter: els.actions, actions: els.actions, warn: false });
 
 function setStatus(kind, html) {
   els.status.className = "status " + kind;
@@ -64,8 +67,8 @@ async function handleFile(file) {
 async function prepareArticle() {
   let art = article;
   if (els.translateToggle.checked) {
-    if (!settings.translationKey) throw new Error("الترجمة غير متاحة — لا يوجد مفتاح ترجمة في هذه النسخة.");
-    setStatus("working", '<span class="spinner"></span>جارٍ الترجمة بالذكاء الاصطناعي…');
+    if (!settings.translationKey) throw new Error("الترجمة غير متاحة: لا مفتاح ترجمة في هذه النسخة.");
+    progress.stage("جارٍ الترجمة");
     const out = await translateHtml(
       { title: art.title, html: art.content, targetLang: els.targetLang.value },
       {
@@ -75,65 +78,59 @@ async function prepareArticle() {
         endpoint: settings.translationEndpoint,
       },
       {
+        signal: progress.signal,
         bilingual: document.getElementById("bilingualToggle") && document.getElementById("bilingualToggle").checked,
-        onProgress: (done, total) => {
-          if (total > 1) {
-            setStatus(
-              "working",
-              `<span class="spinner"></span>جارٍ الترجمة… ${done.toLocaleString("ar")}/${total.toLocaleString("ar")}`
-            );
-          }
-        },
+        onProgress: (done, total) => progress.stage("جارٍ الترجمة", done, total),
       }
     );
     art = { ...art, title: out.title || art.title, content: out.html || art.content, dir: out.dir || art.dir, lang: out.lang || art.lang };
   }
-  setStatus("working", '<span class="spinner"></span>جارٍ بناء ملفّ EPUB…');
+  progress.stage("جارٍ بناء ملفّ EPUB");
   const blob = await buildEpub(art, bookOptions(settings, { embedImages: settings.embedImages }));
   return { art, blob };
 }
 
 async function onSend() {
   if (!article) return;
-  els.sendBtn.disabled = true;
-  els.downloadBtn.disabled = true;
+  progress.start("جارٍ التحضير");
   try {
     const { art, blob } = await prepareArticle();
-    setStatus("working", '<span class="spinner"></span>جارٍ الإرسال إلى كندل…');
-    await sendEpubToKindle({ blob, title: art.title, author: "", domain: settings.amazonDomain });
-    setStatus("ok", "تم الإرسال إلى مكتبة كندل. سيظهر على جهازك خلال دقائق.");
+    progress.stage("جارٍ الإرسال إلى كندل");
+    await sendEpubToKindle({ blob, title: art.title, author: "", domain: settings.amazonDomain, signal: progress.signal });
+    progress.end();
+    setStatus("ok", "أُرسل إلى مكتبة كندل. سيظهر على جهازك خلال دقائق.");
     addHistoryEntry({ title: art.title, site: "ملفّ" });
   } catch (e) {
+    progress.end();
+    if (isCancel(e)) {
+      setStatus("info", "ألغيت الإرسال.");
+      return;
+    }
     const msg = e.message || String(e);
     if (/سجّل الدخول|مسجّل/.test(msg)) {
       setStatus("err", "لست مسجّلًا دخولك في أمازون. افتح amazon.com وسجّل الدخول ثم أعد المحاولة.");
     } else {
       setStatus("err", msg);
     }
-  } finally {
-    els.sendBtn.disabled = false;
-    els.downloadBtn.disabled = false;
   }
 }
 
 async function onDownload() {
   if (!article) return;
-  els.sendBtn.disabled = true;
-  els.downloadBtn.disabled = true;
+  progress.start("جارٍ التحضير");
   try {
     const { art, blob } = await prepareArticle();
+    progress.end();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = sanitizeFilename(art.title, "document") + ".epub";
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
-    setStatus("ok", "تم تنزيل ملفّ EPUB.");
+    setStatus("ok", "نُزّل ملفّ EPUB.");
   } catch (e) {
-    setStatus("err", e.message);
-  } finally {
-    els.sendBtn.disabled = false;
-    els.downloadBtn.disabled = false;
+    progress.end();
+    setStatus(isCancel(e) ? "info" : "err", isCancel(e) ? "ألغيت التنزيل." : e.message);
   }
 }
 
