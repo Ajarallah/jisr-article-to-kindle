@@ -137,7 +137,12 @@ input:focus-visible, select:focus-visible {
   transition: transform 0.2s var(--ease-standard);
 }
 .switch input:checked ~ .track { background: var(--cover); }
-.switch input:checked ~ .track .thumb { transform: translateX(-16px); }
+/* Positive, not -16 — see the same rule in popup.css. `transform` is physical,
+   so the multiplier is what carries the direction: --dir is -1 under RTL, and
+   16 * -1 = -16 (the existing, correct leftward move), while an LTR island on
+   this page — and options.html has them, e.g. the amazonDomain input — gets the
+   mirrored +16 from the same rule. */
+.switch input:checked ~ .track .thumb { transform: translateX(calc(16px * var(--dir))); }
 .switch input:focus-visible ~ .track { outline: 1.5px solid var(--ink); outline-offset: 2px; }
 
 .field { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 13px; }
