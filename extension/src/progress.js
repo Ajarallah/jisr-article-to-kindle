@@ -88,13 +88,20 @@ export function createProgress({ mountAfter, actions, warn = true } = {}) {
       stageEl.textContent = label;
       const known = Number.isFinite(done) && Number.isFinite(total) && total > 1;
       track.classList.toggle("indeterminate", !known);
+      // Base Web's documented a11y contract for indeterminate progress: a
+      // screen reader has no percentage to announce, so it should at least
+      // know the region is busy.
+      track.setAttribute("aria-busy", String(!known));
       if (known) {
-        const pct = Math.round((done / total) * 100);
-        fill.style.width = pct + "%";
+        const ratio = done / total;
+        const pct = Math.round(ratio * 100);
+        // A 0-1 ratio, not a percentage width: progress.css drives the fill
+        // with `transform: scaleX(--p)` so the update is compositor-only.
+        fill.style.setProperty("--p", ratio);
         countEl.textContent = `${done.toLocaleString("ar")}/${total.toLocaleString("ar")}`;
         track.setAttribute("aria-valuenow", String(pct));
       } else {
-        fill.style.width = "";
+        fill.style.removeProperty("--p");
         countEl.textContent = "";
         track.removeAttribute("aria-valuenow");
       }
@@ -102,7 +109,8 @@ export function createProgress({ mountAfter, actions, warn = true } = {}) {
     end() {
       controller = null;
       root.classList.add("hidden");
-      fill.style.width = "";
+      fill.style.removeProperty("--p");
+      track.removeAttribute("aria-busy");
       if (actions) actions.classList.remove("hidden");
     },
   };

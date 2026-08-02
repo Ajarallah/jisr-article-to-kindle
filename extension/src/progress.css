@@ -4,6 +4,14 @@
  * Translation takes 17-60s on a full article, which is past the threshold where
  * a spinner stops being honest feedback: the user needs to know how far along it
  * is and how to stop it. Built by progress.js — these are only its clothes.
+ *
+ * This is the only animation running DURING that 17-60s CPU-bound translation
+ * (the sweep below, when the batch count isn't known yet), so it is the one
+ * place in the whole extension where an animated layout property would be a
+ * real performance defect rather than a stylistic nit: forcing style→layout→
+ * paint→composite on the main thread every frame, for up to a minute, while
+ * that same thread is busy running the translation. Everything here is driven
+ * by `transform` instead, which the compositor can run without touching layout.
  */
 
 .progress {
@@ -11,42 +19,81 @@
   padding: 10px 12px;
   background: var(--paper-2);
   border-inline-start: 3px solid var(--cover);
+  opacity: 1;
+  transition: opacity var(--dur-base) var(--ease-entrance),
+    display var(--dur-base) var(--ease-entrance) allow-discrete;
 }
-.progress.hidden { display: none; }
+.progress.hidden {
+  display: none;
+  opacity: 0;
+  /* Exit at ~75% of the entrance duration (--dur-fast is ~73% of --dur-base) —
+     leaving reads as more responsive than arriving. */
+  transition: opacity var(--dur-fast) var(--ease-exit),
+    display var(--dur-fast) var(--ease-exit) allow-discrete;
+}
+@starting-style {
+  .progress:not(.hidden) { opacity: 0; }
+}
 
 .progress-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.progress-stage { font-size: 12.5px; font-weight: 600; }
-.progress-count { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.progress-stage { font-size: var(--text-sec); font-weight: 600; }
+.progress-count { font-size: var(--text-micro); color: var(--muted); font-variant-numeric: tabular-nums; }
 
-.progress-track { position: relative; height: 3px; margin: 9px 0 8px; background: var(--rule); overflow: hidden; }
+/* Carbon's small progress-bar size. */
+.progress-track { position: relative; height: 4px; margin: 9px 0 8px; background: var(--rule); overflow: hidden; }
+
 .progress-fill {
   position: absolute;
-  inset-block: 0;
-  inset-inline-start: 0;
-  width: 0;
+  inset: 0;
   background: var(--cover);
-  transition: width 0.25s var(--ease);
+  transform: scaleX(var(--p, 0));
+  /* transform-origin has no logical form (see tokens.css's --dir comment): a
+     bare `0` always means the physical left edge regardless of `direction`,
+     so the fill would grow from the wrong side under RTL without this. */
+  transform-origin: 0 center;
 }
+[dir="rtl"] .progress-fill { transform-origin: 100% center; }
+
+/* Determinate case: progress.js writes --p (0-1) on every update. Animating
+   the resulting scaleX is a compositor-only operation — no layout, no paint of
+   the track itself, just the GPU stretching a layer. Animating `width` here
+   instead (the previous approach) would force layout on every step update. */
+.progress-track:not(.indeterminate) .progress-fill {
+  transition: transform var(--dur-base) var(--ease-standard);
+}
+
 /* Before the batch count is known there is nothing honest to fill, so sweep
-   instead of inventing a percentage. */
-.progress-track.indeterminate .progress-fill { width: 35%; animation: progress-sweep 1.1s var(--ease) infinite; }
-@keyframes progress-sweep {
-  0% { inset-inline-start: -35%; }
-  100% { inset-inline-start: 100%; }
+   instead of inventing a percentage. The sweep is intentionally NOT scaleX —
+   it needs to travel past both edges, which scaleX (anchored at one edge)
+   can't do — so it gets its own translateX, still transform-only. */
+.progress-track.indeterminate .progress-fill {
+  inset-inline-start: 0;
+  width: 35%;
+  transform: none;
+  animation: progress-sweep 1.1s var(--ease-standard) infinite;
 }
+@keyframes progress-sweep {
+  0% { transform: translateX(calc(-100% * var(--dir))); }
+  100% { transform: translateX(calc(285.7% * var(--dir))); } /* 100% / 0.35 */
+}
+
+/* Substitute, don't just kill: a full-width bar at low opacity still
+   communicates "working" without a single animated frame. This is more
+   specific than motion.css's blanket reduced-motion rule, so it wins for the
+   properties it sets there. */
 @media (prefers-reduced-motion: reduce) {
-  .progress-track.indeterminate .progress-fill { animation: none; width: 100%; opacity: 0.35; }
-  .progress-fill { transition: none; }
+  .progress-track.indeterminate .progress-fill { animation: none; width: 100%; opacity: 0.35; transform: none; }
+  .progress-track:not(.indeterminate) .progress-fill { transition: none; }
 }
 
 .progress-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.progress-warn { font-size: 10.5px; color: var(--muted); }
+.progress-warn { font-size: var(--text-micro); color: var(--muted); }
 .progress-cancel {
   background: none;
   border: none;
   border-bottom: 1.5px solid var(--cover);
   font: inherit;
-  font-size: 11px;
+  font-size: var(--text-sec);
   font-weight: 600;
   color: var(--ink);
   cursor: pointer;
