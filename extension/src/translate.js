@@ -34,14 +34,14 @@ const DEFAULT_FALLBACK = "deepseek/deepseek-v4-pro";
 // safe for English can overflow the output budget in Arabic — truncating the
 // JSON, which then reads as a "segment count mismatch" and burns every retry.
 // Use a tighter char cap for RTL targets and give the model a generous ceiling.
-// These caps existed to stop a batch overflowing a FLAT max_tokens ceiling and
-// truncating the JSON. Now that outputBudget() sizes the request per batch, the
-// binding constraint is no longer output tokens — it is the provider's requests
-// per minute. Every free tier measured here allows 5-20 rpm, so a 14-paragraph
-// article split into ~10 batches spends minutes queueing. Bigger batches mean
-// fewer requests, which is the only lever that actually helps.
-const MAX_CHARS_PER_BATCH = 6000;
-const MAX_CHARS_PER_BATCH_RTL = 3500;
+// Smaller batches, on purpose. A larger batch means a longer JSON array in the
+// reply, and a longer array is more likely to lose one entry along the way —
+// measured directly: an 18-segment batch came back with 17, finish_reason
+// "stop", nothing truncated, one just gone. The indexed {i,t} reply format
+// (see parseJsonArray) makes a drop survivable, but keeping batches small in
+// the first place means fewer opportunities for it to happen at all.
+const MAX_CHARS_PER_BATCH = 2500;
+const MAX_CHARS_PER_BATCH_RTL = 1400;
 const MAX_OUTPUT_TOKENS = 16384;
 const MIN_OUTPUT_TOKENS = 1024;
 // Ask for what this batch can plausibly need, not a flat ceiling. Two reasons:
@@ -84,11 +84,29 @@ function systemPrompt(targetLang) {
   return `You are a professional literary translator. Translate the given text segments into ${targetLang}.
 Rules:
 - Preserve meaning, tone, and register. Translate idiomatically, not word-for-word.
-- Return ONLY a raw JSON array of strings, exactly the same length and order as the input array. No markdown fences, no commentary, no keys.
-- Each output string is the translation of the input string at the same index.
-- Never merge, split, drop, or reorder segments. If a segment is a number, symbol, URL, or already in the target language, return it unchanged.${arabicRules}`;
+- The input is a JSON array of {"i": <number>, "t": "<text>"} objects.
+- Return ONLY a raw JSON array of {"i": <same number>, "t": "<translation>"} objects. No markdown fences, no commentary.
+- Echo each "i" back exactly. Return one object per input object — never merge, split, drop, or reorder them.
+- If a segment is a number, symbol, URL, or already in the target language, return its text unchanged.${arabicRules}`;
 }
 
+/*
+ * Parse the model's reply into exactly `expectedLen` slots.
+ *
+ * We ask for [{i, t}] rather than a bare array of strings because position is
+ * the one thing models silently lose: measured against a real article, a
+ * well-behaved model returned 17 translations for 18 segments with
+ * finish_reason "stop" — nothing truncated, one segment simply gone. With a bare
+ * array that is unrecoverable (which text went missing?), so the whole book
+ * failed. With explicit indices a dropped segment leaves a hole we can identify
+ * and fill from the source, costing one untranslated sentence instead of
+ * everything.
+ *
+ * Bare string arrays are still accepted: older/simpler models fall back to that
+ * shape, and it is unambiguous as long as the length matches.
+ *
+ * Returns an array where a missing slot is null (the caller substitutes source).
+ */
 function parseJsonArray(content, expectedLen) {
   let text = String(content).trim();
   text = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
@@ -97,6 +115,24 @@ function parseJsonArray(content, expectedLen) {
   if (start !== -1 && end !== -1) text = text.slice(start, end + 1);
   const arr = JSON.parse(text);
   if (!Array.isArray(arr)) throw new Error("model did not return an array");
+
+  const indexed = arr.filter((x) => x && typeof x === "object" && !Array.isArray(x));
+  if (indexed.length) {
+    const out = new Array(expectedLen).fill(null);
+    let placed = 0;
+    for (const o of indexed) {
+      const i = Number(o.i ?? o.index ?? o.id);
+      if (!Number.isInteger(i) || i < 0 || i >= expectedLen || out[i] !== null) continue;
+      out[i] = String(o.t ?? o.text ?? o.translation ?? "");
+      placed += 1;
+    }
+    // A reply that lost most of its segments is a broken generation, not a slip.
+    if (placed < Math.ceil(expectedLen * 0.6)) {
+      throw new Error(`segment count mismatch: got ${placed}, expected ${expectedLen}`);
+    }
+    return out;
+  }
+
   if (arr.length !== expectedLen) {
     throw new Error(`segment count mismatch: got ${arr.length}, expected ${expectedLen}`);
   }
@@ -149,6 +185,37 @@ function learnRateLimit(pacer, ms, explicit) {
 }
 
 // One completion attempt against a specific model. Throws with `.retryable`.
+/*
+ * OpenRouter serves one model from many upstream providers and load-balances
+ * between them by default. For deepseek-v4-flash that pool spans ~22 providers
+ * whose measured p50 throughput ranges from ~72 tokens/s (Baidu, AtlasCloud) down
+ * to single digits — and a random draw landed us on a slow one, where a single
+ * batch produced 127 tokens in 21s and long batches never finished streaming.
+ * Asking to sort by throughput turns that lottery into a deterministic choice.
+ *
+ * Sent only to OpenRouter: `provider` is its extension to the OpenAI schema, and
+ * a strict endpoint (Z.AI, SambaNova) may reject an unknown field.
+ */
+function routingOptions(endpoint) {
+  let host = "";
+  try {
+    host = new URL(endpoint).host;
+  } catch {
+    return {};
+  }
+  if (host !== "openrouter.ai") return {};
+  return {
+    provider: { sort: "throughput" },
+    // Reasoning models (deepseek-v4-flash is one) spend part of max_tokens
+    // "thinking" in English before writing a single translated character.
+    // Measured: 1290 reasoning tokens against a small per-batch budget left
+    // finish_reason "length" and an EMPTY content field — the translation
+    // never started. Translation doesn't need a visible thought process, so
+    // turn it off and let the whole budget go to the actual output.
+    reasoning: { enabled: false },
+  };
+}
+
 async function complete(segments, targetLang, cfg, model, signal, pacer) {
   await pace(pacer);
   let resp;
@@ -163,10 +230,14 @@ async function complete(segments, targetLang, cfg, model, signal, pacer) {
           model,
           messages: [
             { role: "system", content: systemPrompt(targetLang) },
-            { role: "user", content: JSON.stringify(segments) },
+            {
+            role: "user",
+            content: JSON.stringify(segments.map((s, i) => ({ i, t: s }))),
+          },
           ],
           temperature: 0.2,
           max_tokens: outputBudget(segments),
+          ...routingOptions(cfg.endpoint || DEFAULT_ENDPOINT),
         }),
       },
       TRANSLATE_TIMEOUT_MS
@@ -345,8 +416,11 @@ export async function translateHtml({ title, html, targetLang }, cfg, opts = {})
         lead: s.match(/^\s*/)[0],
         trail: s.match(/\s*$/)[0],
       }));
-      const out = await translateBatch(info.map((t) => t.core), targetLang, cfg, signal, pacer);
-      results[i] = out.map((t, j) => info[j].lead + t + info[j].trail);
+      const cores = info.map((t) => t.core);
+      const out = await translateBatch(cores, targetLang, cfg, signal, pacer);
+      // A null slot means the model dropped that segment; keep the source text
+      // rather than leaving a hole in the book.
+      results[i] = out.map((t, j) => info[j].lead + (t == null ? cores[j] : t) + info[j].trail);
       done += 1;
       if (onProgress) onProgress(done, batches.length);
     }

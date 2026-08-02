@@ -38,9 +38,13 @@ function err(status, body = "") {
   };
 }
 // Parse the segment array the code sent, so we can echo the right length.
+// The request carries [{i, t}] objects (see parseJsonArray's note on why the
+// index is explicit). Tests care about the texts, so unwrap them here and let
+// each test keep returning a plain array — that shape is still accepted.
 function sentSegments(opts) {
   const body = JSON.parse(opts.body);
-  return JSON.parse(body.messages[1].content);
+  const sent = JSON.parse(body.messages[1].content);
+  return sent.map((s) => (s && typeof s === "object" ? s.t : s));
 }
 function sentModel(opts) {
   return JSON.parse(opts.body).model;
@@ -257,4 +261,44 @@ test("a network blip is still retried on the same model", async () => {
   const out = await translateHtml({ title: "T", html: HTML, targetLang: "Arabic" }, CFG);
   assert.equal(n, 2, "one retry, same model");
   assert.match(out.html, /AR:Hello world\./);
+});
+
+test("indexed reply: a dropped segment keeps its source text instead of failing", async () => {
+  // The measured real-world slip: model returns 17 of 18 with finish_reason
+  // "stop". With indices we know WHICH one is missing and can keep the original.
+  installFetch((url, opts) => {
+    const segs = sentSegments(opts);
+    const out = segs.map((s, i) => ({ i, t: "AR:" + s })).filter((_, i) => i !== 1);
+    return ok(out);
+  });
+  const html = "<p>First sentence here.</p><p>Second sentence here.</p><p>Third sentence here.</p>";
+  const out = await translateHtml({ title: "T", html, targetLang: "Arabic" }, CFG);
+  // Segment 0 is the title, so the dropped index 1 is the FIRST paragraph: it
+  // survives untranslated while its neighbours come back translated.
+  assert.match(out.html, /<p>First sentence here\.<\/p>/);
+  assert.match(out.html, /AR:Second sentence here\./);
+  assert.match(out.html, /AR:Third sentence here\./);
+});
+
+test("indexed reply: losing most of the batch is still a hard error", async () => {
+  installFetch((url, opts) => {
+    const segs = sentSegments(opts);
+    return ok([{ i: 0, t: "AR:" + segs[0] }]); // 1 of 4 — a broken generation
+  });
+  const html = "<p>One here.</p><p>Two here.</p><p>Three here.</p><p>Four here.</p>";
+  await assert.rejects(
+    () => translateHtml({ title: "T", html, targetLang: "Arabic" }, CFG),
+    /mismatch|أسقطت/
+  );
+});
+
+test("indexed reply: out-of-order objects are placed by index, not arrival", async () => {
+  installFetch((url, opts) => {
+    const segs = sentSegments(opts);
+    return ok(segs.map((s, i) => ({ i, t: "AR:" + s })).reverse());
+  });
+  const html = "<p>Alpha here.</p><p>Beta here.</p><p>Gamma here.</p>";
+  const out = await translateHtml({ title: "T", html, targetLang: "Arabic" }, CFG);
+  assert.ok(out.html.indexOf("AR:Alpha") < out.html.indexOf("AR:Beta"));
+  assert.ok(out.html.indexOf("AR:Beta") < out.html.indexOf("AR:Gamma"));
 });
