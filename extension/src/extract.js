@@ -211,6 +211,72 @@
     return "";
   }
 
+  // Declared width of the og:image, when the page bothers to publish one.
+  // og:image is typically 1200x630 — fine for a social-card thumbnail, blurry
+  // stretched across a ~1600-2560px-wide cover band — so this is the signal
+  // that decides whether og:image is even worth trying FIRST, ahead of a
+  // larger body image.
+  function metaImageWidth(doc) {
+    var m = doc.querySelector('meta[property="og:image:width"]');
+    var w = m && m.content ? parseInt(m.content, 10) : NaN;
+    return isNaN(w) ? 0 : w;
+  }
+
+  // The best-resolution image actually embedded in the extracted body, so a
+  // photo published inline (often larger than the social-card og:image) can
+  // win the cover over a soft, upscaled thumbnail. `contentHtml` is the same
+  // serialized region already chosen as the article body below — re-parsed
+  // here rather than re-walking the live DOM, so this stays a query over
+  // exactly what the reader will see, not over page chrome that got dropped.
+  // Reuses bestFromSrcset (defined above) per-image rather than re-implementing
+  // srcset resolution.
+  function bestBodyImage(contentHtml, baseUrl) {
+    try {
+      var doc2 = new DOMParser().parseFromString(contentHtml, "text/html");
+      var imgs = doc2.querySelectorAll("img");
+      var best = "", bestScore = -1;
+      for (var i = 0; i < imgs.length; i++) {
+        var img = imgs[i];
+        var srcset = img.getAttribute("srcset") || img.getAttribute("data-srcset") || "";
+        var fromSrcset = bestFromSrcset(srcset);
+        var src = fromSrcset || img.getAttribute("src") || "";
+        if (!src) continue;
+        var w = parseInt(img.getAttribute("width"), 10) || 0;
+        // A resolved srcset implies the page offered multiple resolutions and
+        // we picked its largest, so it outranks a plain src of unknown size.
+        var score = fromSrcset ? 100000 + w : w;
+        if (score > bestScore) { bestScore = score; best = src; }
+      }
+      if (!best) return "";
+      try { return new URL(best, baseUrl).href; } catch (e) { return best; }
+    } catch (e) {
+      return "";
+    }
+  }
+
+  // Ordered candidates for the cover's lead image: (1) og:image when the page
+  // declares it at least 1600px wide, (2) the best in-body image, (3) og:image
+  // regardless of declared width, as a last resort. paintLeadImage (covers.js)
+  // tries them in this order and keeps the first that decodes wide enough for
+  // the cover band, falling back to whichever decoded widest. `leadImage`
+  // (below) stays the first entry for callers that predate this array.
+  function leadImageCandidates(doc, ld, contentHtml) {
+    var og = metaImage(doc, ld);
+    var body = bestBodyImage(contentHtml, location.href);
+    var ordered = [];
+    if (og && metaImageWidth(doc) >= 1600) ordered.push(og);
+    if (body) ordered.push(body);
+    if (og) ordered.push(og);
+    var seen = {};
+    var uniq = [];
+    for (var i = 0; i < ordered.length; i++) {
+      if (!ordered[i] || seen[ordered[i]]) continue;
+      seen[ordered[i]] = true;
+      uniq.push(ordered[i]);
+    }
+    return uniq;
+  }
+
   // Parse the page's JSON-LD once; return the first object that looks like an
   // Article (has datePublished/author/headline).
   function jsonLd(doc) {
@@ -306,6 +372,7 @@
         : document.documentElement.getAttribute("dir") || contentDir;
 
     var ld = jsonLd(document);
+    var candidates = leadImageCandidates(document, ld, content);
     return {
       ok: true,
       title: (title || "Untitled").trim(),
@@ -316,7 +383,10 @@
       dir: dir === "rtl" ? "rtl" : "ltr",
       url: location.href,
       excerpt: (article && article.excerpt) || "",
-      leadImage: metaImage(document, ld),
+      // Kept as the first candidate for callers that predate leadImageCandidates
+      // (readinglist.js, epub.js's single-URL fallback path).
+      leadImage: candidates[0] || "",
+      leadImageCandidates: candidates,
       content: content,
       textLength: dirText.trim().length,
       strategy: useMain ? "main-region" : "readability",
