@@ -23,10 +23,21 @@ const els = {
   downloadBtn: document.getElementById("downloadBtn"),
   settingsBtn: document.getElementById("settingsBtn"),
   status: document.getElementById("status"),
+  progress: document.getElementById("progress"),
+  progressStage: document.getElementById("progressStage"),
+  progressCount: document.getElementById("progressCount"),
+  progressBar: document.getElementById("progressBar"),
+  progressFill: document.getElementById("progressFill"),
+  cancelBtn: document.getElementById("cancelBtn"),
+  actions: document.getElementById("actions"),
 };
 
 let article = null;
 let settings = null;
+// The controller for whatever long job is running, so the cancel button has
+// something real to abort. translate.js/glossary.js/deliver.js all accept a
+// signal — until now nothing passed one, so "cancel" was not possible at all.
+let job = null;
 
 function setStatus(kind, html) {
   els.status.className = "status " + kind;
@@ -35,6 +46,54 @@ function setStatus(kind, html) {
 }
 function clearStatus() {
   els.status.classList.add("hidden");
+}
+
+/*
+ * Progress for the long jobs. Nielsen's 10-second limit asks for a percent-done
+ * indicator plus a signposted way to interrupt; translation alone runs 17-60s.
+ * Stages that cannot report a fraction (building, sending) sweep instead of
+ * inventing a number.
+ */
+function startJob(stage) {
+  job = new AbortController();
+  clearStatus();
+  // The progress block REPLACES the actions row rather than stacking under it:
+  // a greyed-out disabled button reads as broken, and two competing affordances
+  // (dead button + live progress) split attention during the wait.
+  els.actions.classList.add("hidden");
+  els.progress.classList.remove("hidden");
+  setStage(stage);
+}
+
+function setStage(stage, done, total) {
+  els.progressStage.textContent = stage;
+  const known = Number.isFinite(done) && Number.isFinite(total) && total > 1;
+  const track = els.progressBar;
+  track.classList.toggle("indeterminate", !known);
+  if (known) {
+    const pct = Math.round((done / total) * 100);
+    els.progressFill.style.width = pct + "%";
+    els.progressCount.textContent = `${done.toLocaleString("ar")}/${total.toLocaleString("ar")}`;
+    track.setAttribute("aria-valuenow", String(pct));
+  } else {
+    els.progressFill.style.width = "";
+    els.progressCount.textContent = "";
+    track.removeAttribute("aria-valuenow");
+  }
+}
+
+function endJob() {
+  job = null;
+  els.progress.classList.add("hidden");
+  els.progressFill.style.width = "";
+  els.actions.classList.remove("hidden");
+  els.sendBtn.disabled = false;
+  els.downloadBtn.disabled = false;
+}
+
+// An aborted job is the user's own doing — report it plainly, not as an error.
+function isCancel(e) {
+  return e && (e.name === "AbortError" || /ألغيت/.test(e.message || ""));
 }
 
 // Lightweight direction detector for picked regions (extract.js's own detector
@@ -178,15 +237,9 @@ async function translateArticle(art, targetLang) {
       endpoint: settings.translationEndpoint,
     },
     {
+      signal: job ? job.signal : undefined,
       bilingual: els.bilingualToggle && els.bilingualToggle.checked,
-      onProgress: (done, total) => {
-        if (total > 1) {
-          setStatus(
-            "working",
-            `<span class="spinner"></span>جارٍ الترجمة… ${done.toLocaleString("ar")}/${total.toLocaleString("ar")}`
-          );
-        }
-      },
+      onProgress: (done, total) => setStage("جارٍ الترجمة", done, total),
     }
   );
   return { ...art, title: out.title || art.title, content: out.html || art.content, dir: out.dir || art.dir, lang: out.lang || art.lang };
@@ -211,42 +264,48 @@ async function prepareArticle(embedImages) {
   const base = activeArticle();
   let art = base;
   if (els.translateToggle.checked) {
-    setStatus("working", '<span class="spinner"></span>جارٍ الترجمة بالذكاء الاصطناعي…');
+    setStage("جارٍ الترجمة");
     art = await translateArticle(base, els.targetLang.value);
   }
   if (els.glossaryToggle && els.glossaryToggle.checked) {
     if (!settings.translationKey) throw new Error("المسرد غير متاح — لا يوجد مفتاح ترجمة في هذه النسخة.");
-    setStatus("working", '<span class="spinner"></span>جارٍ إعداد المسرد الدراسي…');
+    setStage("جارٍ إعداد المسرد الدراسي");
     const annotated = await annotateHtml(
       art.content,
       { apiKey: settings.translationKey, model: settings.translationModel, endpoint: settings.translationEndpoint },
-      { targetLang: els.targetLang.value }
+      { targetLang: els.targetLang.value, signal: job ? job.signal : undefined }
     );
     art = { ...art, content: annotated };
   }
-  setStatus("working", '<span class="spinner"></span>جارٍ بناء ملف EPUB…');
+  setStage("جارٍ بناء ملفّ EPUB");
   const blob = await buildEpub(art, bookOptions(settings, { embedImages }));
   return { art, blob };
 }
 
 async function onSend() {
   if (!article) return;
-  els.sendBtn.disabled = true;
-  els.downloadBtn.disabled = true;
+  const embedImages = await ensureImagePermission();
+  startJob("جارٍ التحضير");
   try {
-    const embedImages = await ensureImagePermission();
     const { art, blob } = await prepareArticle(embedImages);
-    setStatus("working", '<span class="spinner"></span>جارٍ الإرسال إلى كندل…');
+    setStage("جارٍ الإرسال إلى كندل");
     await sendEpubToKindle({
       blob,
       title: art.title,
       author: art.byline || art.siteName || "",
       domain: settings.amazonDomain,
+      signal: job ? job.signal : undefined,
     });
+    endJob();
     setStatus("ok", "تم الإرسال إلى مكتبة كندل. سيظهر على جهازك خلال دقائق.");
     addHistoryEntry({ title: art.title, url: art.url, site: art.siteName });
     refreshDeliveryInfo();
   } catch (e) {
+    endJob();
+    if (isCancel(e)) {
+      setStatus("info", "أُلغيت العملية.");
+      return;
+    }
     const msg = e.message || String(e);
     if (/سجّل الدخول|مسجّل/.test(msg)) {
       setStatus(
@@ -267,31 +326,26 @@ async function onSend() {
       const o = document.getElementById("s2kOfficial");
       if (o) o.addEventListener("click", (ev) => { ev.preventDefault(); chrome.tabs.create({ url: "https://www.amazon.com/sendtokindle" }); });
     }
-  } finally {
-    els.sendBtn.disabled = false;
-    els.downloadBtn.disabled = false;
   }
 }
 
 async function onDownload() {
   if (!article) return;
-  els.sendBtn.disabled = true;
-  els.downloadBtn.disabled = true;
+  const embedImages = await ensureImagePermission();
+  startJob("جارٍ التحضير");
   try {
-    const embedImages = await ensureImagePermission();
     const { art, blob } = await prepareArticle(embedImages);
+    endJob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = sanitizeFilename(art.title) + ".epub";
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
-    setStatus("ok", "تم تنزيل ملف EPUB.");
+    setStatus("ok", "تم تنزيل ملفّ EPUB.");
   } catch (e) {
-    setStatus("err", e.message);
-  } finally {
-    els.sendBtn.disabled = false;
-    els.downloadBtn.disabled = false;
+    endJob();
+    setStatus(isCancel(e) ? "info" : "err", isCancel(e) ? "أُلغيت العملية." : e.message);
   }
 }
 
@@ -301,13 +355,12 @@ els.translateToggle.addEventListener("change", () => {
 });
 async function onPreview() {
   if (!article) return;
-  els.sendBtn.disabled = true;
-  els.downloadBtn.disabled = true;
+  const embedImages = await ensureImagePermission();
+  startJob("جارٍ التحضير");
   try {
-    const embedImages = await ensureImagePermission();
     let art = activeArticle();
     if (els.translateToggle.checked) {
-      setStatus("working", '<span class="spinner"></span>جارٍ الترجمة بالذكاء الاصطناعي…');
+      setStage("جارٍ الترجمة");
       art = await translateArticle(art, els.targetLang.value);
     }
     await chrome.storage.local.set({
@@ -327,16 +380,18 @@ async function onPreview() {
         domain: settings.amazonDomain,
       },
     });
+    endJob();
     clearStatus();
     chrome.tabs.create({ url: chrome.runtime.getURL("src/preview.html") });
   } catch (e) {
-    setStatus("err", e.message || String(e));
-  } finally {
-    els.sendBtn.disabled = false;
-    els.downloadBtn.disabled = false;
+    endJob();
+    setStatus(isCancel(e) ? "info" : "err", isCancel(e) ? "أُلغيت العملية." : e.message || String(e));
   }
 }
 
+els.cancelBtn.addEventListener("click", () => {
+  if (job) job.abort();
+});
 els.settingsBtn.addEventListener("click", () => chrome.runtime.openOptionsPage());
 const previewBtn = document.getElementById("previewBtn");
 if (previewBtn) previewBtn.addEventListener("click", onPreview);

@@ -46,6 +46,13 @@ const node = {
   Blob: "readonly",
   Uint8Array: "readonly",
   globalThis: "writable",
+  // Web-standard APIs Node exposes globally — the tests drive cancellation
+  // through the same AbortController/DOMException the browser code uses.
+  AbortController: "readonly",
+  AbortSignal: "readonly",
+  DOMException: "readonly",
+  fetch: "readonly",
+  Response: "readonly",
 };
 
 const rules = {

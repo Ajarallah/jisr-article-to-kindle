@@ -391,6 +391,12 @@ function interleaveBilingual(srcBody, transBody, targetDir, targetLangCode) {
 export async function translateHtml({ title, html, targetLang }, cfg, opts = {}) {
   if (!cfg || !cfg.apiKey) throw new Error("لا يوجد مفتاح ترجمة في هذه النسخة.");
   const { signal, onProgress, bilingual } = opts;
+  // Bail before parsing or batching if the caller already cancelled. Without
+  // this the run enters the batch loop and only discovers the abort once a
+  // request fails, burning the retry budget on work nobody is waiting for.
+  if (signal && signal.aborted) {
+    throw new DOMException("cancelled", "AbortError");
+  }
 
   const doc = new DOMParser().parseFromString(html, "text/html");
   const nodes = collectTextNodes(doc.body, doc);

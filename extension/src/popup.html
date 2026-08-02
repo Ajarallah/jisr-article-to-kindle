@@ -79,9 +79,29 @@
       <span id="deliveryInfo" class="kindle-email">…</span>
     </section>
 
-    <div class="actions">
+    <div class="actions" id="actions">
       <button id="sendBtn" class="btn primary" disabled>إرسال إلى كندل</button>
       <button id="downloadBtn" class="btn ghost" disabled>تنزيل</button>
+    </div>
+
+    <!--
+      Long jobs (translation runs 17-60s) need more than a spinner: Nielsen's
+      10-second limit calls for a percent-done indicator AND a signposted way to
+      interrupt. The "don't close" line matters because a Chrome popup closes the
+      moment it loses focus, which would throw away work already paid for.
+    -->
+    <div id="progress" class="progress hidden" role="status" aria-live="polite" aria-atomic="true">
+      <div class="progress-head">
+        <span id="progressStage" class="progress-stage"></span>
+        <span id="progressCount" class="progress-count"></span>
+      </div>
+      <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="progressBar">
+        <span id="progressFill" class="progress-fill"></span>
+      </div>
+      <div class="progress-foot">
+        <span class="progress-warn">أبقِ هذه النافذة مفتوحة</span>
+        <button id="cancelBtn" class="progress-cancel" type="button">إلغاء</button>
+      </div>
     </div>
 
     <div id="status" class="status hidden" role="status" aria-live="polite" aria-atomic="true"></div>
