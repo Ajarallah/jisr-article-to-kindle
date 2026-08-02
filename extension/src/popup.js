@@ -6,7 +6,7 @@ import { addHistoryEntry } from "./history.js";
 import { addToList } from "./readinglist.js";
 import { annotateHtml } from "./glossary.js";
 import { createProgress, isCancel } from "./progress.js";
-import { COVER_STYLES, coverStyle, paintCoverArtwork, suggestCoverStyle, ART_BAND } from "./covers.js";
+import { COVER_STYLES, coverStyle, paintCoverArtwork, ART_BAND } from "./covers.js";
 
 const els = {
   title: document.getElementById("articleTitle"),
@@ -153,14 +153,6 @@ function buildCoverPicker() {
   applyCoverStyle(settings.coverStyle);
 }
 
-// "إنشاء غلاف" — score the current title against each category's keywords and
-// jump straight to a matching (or, absent any match, random) style. See
-// suggestCoverStyle in covers.js for the scoring/tie-breaking rule.
-function suggestCover() {
-  const title = (els.title.textContent || (article && article.title) || "").trim();
-  chooseCoverStyle(suggestCoverStyle(title));
-}
-
 async function initSettings() {
   settings = await loadSettings();
   els.translateToggle.checked = !!settings.translateByDefault;
@@ -171,7 +163,6 @@ async function initSettings() {
     settings.embedImages = els.embedImages.checked;
     saveSettings({ embedImages: settings.embedImages });
   });
-  els.suggestCoverBtn.addEventListener("click", suggestCover);
   buildCoverPicker();
 }
 
