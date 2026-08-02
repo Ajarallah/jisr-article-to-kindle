@@ -27,15 +27,28 @@ export const COVER_INK = "#CB3F28";
 export const COVER_TEXT = "#F7F2E7";
 
 /*
- * Cover type. The cover is rasterised to JPEG, so the typeface becomes pixels
- * and no font file is ever distributed — that is design work, which font
- * licences permit even when they forbid shipping the font itself.
- * "The Year of Handicrafts" at Black is the intended face; it has to be
- * installed on the reader's machine, and Plex carries everyone else.
+ * Cover type: The Year of Handicrafts at Black, bundled with the extension
+ * (lib/fonts/handicrafts-black.woff2, declared in fonts.css).
  */
 export const COVER_FONT_RTL = '"The Year of Handicrafts", "IBM Plex Sans Arabic", sans-serif';
 export const COVER_FONT_LTR = '"The Year of Handicrafts", "IBM Plex Sans", Georgia, serif';
 export const COVER_FONT_WEIGHT = 900;
+
+/*
+ * A canvas draws with whatever faces the DOCUMENT has already loaded. @font-face
+ * is lazy, so on the first cover — before any element has rendered in that face —
+ * the draw silently falls back to Plex and the book ships with the wrong cover.
+ * Force the load and wait for it.
+ */
+export async function ensureCoverFont() {
+  try {
+    if (typeof document === "undefined" || !document.fonts) return;
+    await document.fonts.load(`${COVER_FONT_WEIGHT} 104px "The Year of Handicrafts"`, "جسر");
+    await document.fonts.ready;
+  } catch {
+    /* falls back to Plex, which is still a correct cover */
+  }
+}
 
 export const COVER_STYLES = [
   { id: "plain", label: "سادة", texture: null },

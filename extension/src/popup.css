@@ -58,8 +58,11 @@ body {
 .icon-btn:focus-visible { outline: 1.5px solid var(--cover-text); outline-offset: 2px; }
 
 .title {
+  /* Same face the EPUB cover is drawn with, so the preview is not an
+     approximation of the artifact. */
+  font-family: "The Year of Handicrafts", "IBM Plex Sans Arabic", sans-serif;
   font-size: 25px;
-  font-weight: 700;
+  font-weight: 900;
   line-height: 1.38;
   word-break: break-word;
   outline: none;

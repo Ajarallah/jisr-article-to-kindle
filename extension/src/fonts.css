@@ -27,3 +27,18 @@
   font-display: swap;
   src: url("../lib/fonts/ibm-plex-arabic-700.woff2") format("woff2");
 }
+
+/*
+ * The Year of Handicrafts (عام الحرف اليدوية) — Black only, the single weight the
+ * cover uses. Bundled so every reader gets the intended cover, not just machines
+ * that happen to have it installed. Loading it here rather than relying on the
+ * system font is also what lets the canvas cover generator use it: the popup
+ * document must own the face before OffscreenCanvas can draw with it.
+ */
+@font-face {
+  font-family: "The Year of Handicrafts";
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url("../lib/fonts/handicrafts-black.woff2") format("woff2");
+}

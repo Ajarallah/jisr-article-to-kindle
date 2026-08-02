@@ -15,7 +15,7 @@
  */
 
 import { fetchWithTimeout } from "./net.js";
-import { COVER_TEXT, COVER_FONT_RTL, COVER_FONT_LTR, COVER_FONT_WEIGHT, paintCoverBackground } from "./covers.js";
+import { COVER_TEXT, COVER_FONT_RTL, COVER_FONT_LTR, COVER_FONT_WEIGHT, paintCoverBackground, ensureCoverFont } from "./covers.js";
 
 // Embedding guards: keep opt-in image embedding from blowing past the 50 MB
 // Send-to-Kindle limit or exhausting memory on a gallery page.
@@ -359,6 +359,7 @@ async function generateCoverJpeg(article, isRtl, styleId) {
     const margin = 150;
     // Same inks as the popup's cover block (see src/tokens.css --cover /
     // --cover-text). The popup previews this image; if you change one, change both.
+    await ensureCoverFont();
     const canvas = new OffscreenCanvas(W, H);
     const ctx = canvas.getContext("2d");
     // Ink, then the chosen texture over it. The popup shows the same file as a
