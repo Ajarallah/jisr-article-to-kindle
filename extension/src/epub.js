@@ -15,6 +15,7 @@
  */
 
 import { fetchWithTimeout } from "./net.js";
+import { COVER_INK, COVER_TEXT, COVER_FONT_RTL, COVER_FONT_LTR, coverStyle } from "./covers.js";
 
 // Embedding guards: keep opt-in image embedding from blowing past the 50 MB
 // Send-to-Kindle limit or exhausting memory on a gallery page.
@@ -350,7 +351,7 @@ function wrapText(ctx, text, maxWidth) {
  * placeholder. Returns { base64, mime } or null when canvas isn't available
  * (test harness / older environments) — in which case the book ships coverless.
  */
-async function generateCoverJpeg(article, isRtl) {
+async function generateCoverJpeg(article, isRtl, styleId) {
   if (!canUseCanvas()) return null;
   try {
     const W = 1600;
@@ -358,16 +359,15 @@ async function generateCoverJpeg(article, isRtl) {
     const margin = 150;
     // Same inks as the popup's cover block (see src/tokens.css --cover /
     // --cover-text). The popup previews this image; if you change one, change both.
-    const COVER_INK = "#CB3F28";
-    const COVER_TEXT = "#F7F2E7";
     const canvas = new OffscreenCanvas(W, H);
     const ctx = canvas.getContext("2d");
     ctx.fillStyle = COVER_INK;
     ctx.fillRect(0, 0, W, H);
+    // The chosen background, drawn under the type. Its CSS twin renders the same
+    // pattern in the popup's live preview (see covers.js).
+    coverStyle(styleId).draw(ctx, W, H);
 
-    const family = isRtl
-      ? '"IBM Plex Sans Arabic", "Noto Naskh Arabic", "Geeza Pro", sans-serif'
-      : '"IBM Plex Sans", Georgia, serif';
+    const family = isRtl ? COVER_FONT_RTL : COVER_FONT_LTR;
     ctx.direction = isRtl ? "rtl" : "ltr";
     ctx.textAlign = isRtl ? "right" : "left";
     const x = isRtl ? W - margin : margin;
@@ -448,7 +448,7 @@ async function buildEpub(article, opts = {}) {
 
   // Auto-generated typographic cover (null outside the extension / in tests, or
   // when the user turned covers off).
-  const cover = opts.includeCover === false ? null : await generateCoverJpeg(article, isRtl);
+  const cover = opts.includeCover === false ? null : await generateCoverJpeg(article, isRtl, opts.coverStyle);
 
   // 1) mimetype — MUST be first and stored (uncompressed).
   zip.file("mimetype", "application/epub+zip", { compression: "STORE" });
@@ -676,7 +676,8 @@ async function buildBook(articles, opts = {}) {
       ? null
       : await generateCoverJpeg(
           { title: bookTitle, siteName: articles.length > 1 ? `${articles.length} مقالات` : articles[0].siteName, url: articles[0].url },
-          bookDir === "rtl"
+          bookDir === "rtl",
+          opts.coverStyle
         );
 
   zip.file("mimetype", "application/epub+zip", { compression: "STORE" });

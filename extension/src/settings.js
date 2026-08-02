@@ -24,6 +24,7 @@ export const DEFAULT_SETTINGS = {
   margin: "normal", // "tight" | "normal" | "wide" (page padding)
   justify: false, // justified text vs natural start-alignment (RTL justification is weak on Kindle)
   includeCover: true, // auto-generate a cover image
+  coverStyle: "plain", // background pattern drawn on the cover (see covers.js)
   cleanArabic: false, // strip decorative tatweel (kashida) from Arabic text
 };
 
@@ -37,6 +38,7 @@ export function bookOptions(settings, extra = {}) {
     margin: settings.margin,
     justify: settings.justify,
     includeCover: settings.includeCover,
+    coverStyle: settings.coverStyle,
     cleanArabic: settings.cleanArabic,
     ...extra,
   };

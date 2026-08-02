@@ -1,11 +1,12 @@
 import { buildEpub } from "./epub.js";
 import { translateHtml } from "./translate.js";
 import { sendEpubToKindle, checkAuth } from "./deliver.js";
-import { loadSettings, sanitizeFilename, originPattern, bookOptions } from "./settings.js";
+import { loadSettings, saveSettings, sanitizeFilename, originPattern, bookOptions } from "./settings.js";
 import { addHistoryEntry } from "./history.js";
 import { addToList } from "./readinglist.js";
 import { annotateHtml } from "./glossary.js";
 import { createProgress, isCancel } from "./progress.js";
+import { COVER_STYLES, coverStyle } from "./covers.js";
 
 const els = {
   title: document.getElementById("articleTitle"),
@@ -25,6 +26,8 @@ const els = {
   settingsBtn: document.getElementById("settingsBtn"),
   status: document.getElementById("status"),
   actions: document.getElementById("actions"),
+  coverStyles: document.getElementById("coverStyles"),
+  cover: document.querySelector(".cover"),
 };
 
 let article = null;
@@ -85,11 +88,50 @@ function openAmazonLogin() {
   chrome.tabs.create({ url: settings.amazonDomain || "https://www.amazon.com" });
 }
 
+/*
+ * The background picker. Each swatch paints its own pattern with the same CSS the
+ * cover block uses, so the swatch is a miniature of the result rather than a
+ * label for it. Choosing one repaints the cover immediately and persists the
+ * preference, because the cover above IS the artifact being configured.
+ */
+function applyCoverStyle(id) {
+  const style = coverStyle(id);
+  els.cover.style.backgroundImage = style.css || "";
+  els.cover.style.backgroundSize = style.size || "";
+  for (const btn of els.coverStyles.children) {
+    btn.setAttribute("aria-checked", String(btn.dataset.style === style.id));
+  }
+}
+
+function buildCoverPicker() {
+  els.coverStyles.textContent = "";
+  for (const style of COVER_STYLES) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "cover-swatch";
+    btn.dataset.style = style.id;
+    btn.setAttribute("role", "radio");
+    btn.setAttribute("aria-checked", "false");
+    btn.title = style.label;
+    btn.setAttribute("aria-label", style.label);
+    btn.style.backgroundImage = style.css || "";
+    btn.style.backgroundSize = style.size || "";
+    btn.addEventListener("click", () => {
+      settings.coverStyle = style.id;
+      applyCoverStyle(style.id);
+      saveSettings({ coverStyle: style.id });
+    });
+    els.coverStyles.appendChild(btn);
+  }
+  applyCoverStyle(settings.coverStyle);
+}
+
 async function initSettings() {
   settings = await loadSettings();
   els.translateToggle.checked = !!settings.translateByDefault;
   els.translateOptions.classList.toggle("hidden", !settings.translateByDefault);
   if (settings.defaultTargetLang) els.targetLang.value = settings.defaultTargetLang;
+  buildCoverPicker();
 }
 
 // Show whether the user is signed in to Amazon (delivery is via their session).
