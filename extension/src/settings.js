@@ -24,8 +24,10 @@ export const DEFAULT_SETTINGS = {
   margin: "normal", // "tight" | "normal" | "wide" (page padding)
   justify: false, // justified text vs natural start-alignment (RTL justification is weak on Kindle)
   includeCover: true, // auto-generate a cover image
-  coverStyle: "plain", // background pattern drawn on the cover (see covers.js)
+  coverStyle: "image", // background pattern drawn on the cover (see covers.js) — the
+  // article's own lead image beats an abstract pattern whenever one exists
   cleanArabic: false, // strip decorative tatweel (kashida) from Arabic text
+  kindleDevice: "paperwhite12", // target device for cover pixel dimensions (see devices.js)
 };
 
 // Bundle the book-customization options for buildEpub/buildBook, merging any
@@ -40,6 +42,7 @@ export function bookOptions(settings, extra = {}) {
     includeCover: settings.includeCover,
     coverStyle: settings.coverStyle,
     cleanArabic: settings.cleanArabic,
+    kindleDevice: settings.kindleDevice,
     ...extra,
   };
 }
@@ -55,6 +58,14 @@ export function originPattern(url) {
   } catch {
     return null;
   }
+}
+
+// Same shape as originPattern, named for its own call site: requesting host
+// permission for a lead/cover IMAGE url, which routinely lives on a different
+// (CDN) host than the article's own origin — og:image permission must be
+// requested separately from the article-origin permission originPattern grants.
+export function imageOriginPattern(url) {
+  return originPattern(url);
 }
 
 /*
