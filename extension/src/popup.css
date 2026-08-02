@@ -14,7 +14,7 @@ body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
-  font-size: 13px;
+  font-size: var(--text-body);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -24,7 +24,14 @@ body {
 
 /* The jacket, inverted from the old vermilion slab: white paper, black type,
    orange only in the artwork band and the rules. This is what the EPUB cover
-   now is, and the block exists to be that cover rather than to resemble it. */
+   now is, and the block exists to be that cover rather than to resemble it.
+
+   No entrance animation on this block, or on the popup as a whole: the popup
+   is destroyed and rebuilt from scratch every time it opens, dozens of times a
+   day, so any choreography here would replay that often too — Emil Kowalski's
+   rule against animating high-frequency repeated actions, and the reason
+   Raycast ships its whole extension ecosystem with no entrance animations at
+   all. Do not add one later. */
 .cover {
   position: relative;
   overflow: hidden;
@@ -39,11 +46,11 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 9.5px;
+  font-size: var(--text-micro);
   margin: 12px 0 13px;
   color: var(--cover);
 }
-.wordmark { font-weight: 700; font-size: 15px; line-height: 1; letter-spacing: 0; }
+.wordmark { font-weight: 700; font-size: var(--text-mark); line-height: 1; letter-spacing: 0; }
 .cover-kicker { flex: 1; color: var(--muted); }
 .icon-btn {
   display: grid;
@@ -56,7 +63,7 @@ body {
   cursor: pointer;
   color: inherit;
   opacity: 0.85;
-  transition: opacity 0.15s var(--ease);
+  transition: opacity 0.15s var(--ease-standard);
 }
 .icon-btn:hover { opacity: 1; }
 .icon-btn:active { transform: scale(0.92); }
@@ -66,13 +73,13 @@ body {
   /* Same face the EPUB cover is drawn with, so the preview is not an
      approximation of the artifact. */
   font-family: "The Year of Handicrafts", "IBM Plex Sans Arabic", sans-serif;
-  font-size: 25px;
+  font-size: var(--text-cover);
   font-weight: 900;
   line-height: 1.38;
   word-break: break-word;
   outline: none;
 }
-.title.skeleton { opacity: 0.7; font-weight: 400; font-size: 17px; }
+.title.skeleton { opacity: 0.7; font-weight: 400; font-size: var(--text-mark); }
 /* Editable in place — a dotted rule instead of a box, so it still reads as a cover. */
 #articleTitle[contenteditable="true"]:hover { box-shadow: 0 1px 0 var(--rule-strong); }
 #articleTitle[contenteditable="true"]:focus { box-shadow: 0 1.5px 0 var(--cover); }
@@ -81,7 +88,7 @@ body {
   margin-top: 13px;
   padding-top: 9px;
   border-top: 1.5px solid var(--cover);
-  font-size: 10px;
+  font-size: var(--text-micro);
   font-variant-numeric: tabular-nums;
   color: var(--muted);
   min-height: 1px;
@@ -95,7 +102,7 @@ body {
   border-bottom: 1px solid var(--rule);
   background: none;
   font: inherit;
-  font-size: 11.5px;
+  font-size: var(--text-sec);
   color: var(--ink);
 }
 .author-input::placeholder { color: var(--faint); }
@@ -118,10 +125,15 @@ body {
   background: none;
   border: 1.5px solid var(--rule-strong);
   overflow: hidden;
-  transition: border-color 0.15s var(--ease), transform 0.08s var(--ease);
+  /* Hover feedback appears instantly and fades back out on its own schedule —
+     Linear's highlightFadeIn (0s) / highlightFadeOut (--dur-base) split.
+     Snapping on and easing off reads as more responsive than a symmetric
+     fade in both directions. Only :hover overrides border-color's duration,
+     so the press animation (transform) is unaffected either way. */
+  transition: border-color var(--dur-base) var(--ease-standard), transform 0.08s var(--ease-standard);
 }
 .cover-swatch-art { display: block; width: 100%; height: 100%; }
-.cover-swatch:hover { border-color: var(--ink); }
+.cover-swatch:hover { border-color: var(--ink); transition: border-color 0s, transform 0.08s var(--ease-standard); }
 .cover-swatch:active { transform: translateY(1px); }
 .cover-swatch[aria-checked="true"] { border-color: var(--cover); box-shadow: 0 0 0 1.5px var(--cover); }
 .cover-swatch:focus-visible { outline: 1.5px solid var(--ink); outline-offset: 2px; }
@@ -137,7 +149,7 @@ body {
   color: var(--paper-2);
   border: none;
   cursor: pointer;
-  transition: opacity 0.15s var(--ease), transform 0.08s var(--ease);
+  transition: opacity 0.15s var(--ease-standard), transform 0.08s var(--ease-standard);
 }
 .cover-suggest:hover { opacity: 0.85; }
 .cover-suggest:active { transform: translateY(1px) rotate(25deg); }
@@ -149,7 +161,7 @@ main { display: flex; flex-direction: column; }
 
 .sheet { padding: 12px 16px; border-bottom: 1px solid var(--rule); }
 .sheet-head {
-  font-size: 9.5px;
+  font-size: var(--text-micro);
   font-weight: 700;
   color: var(--faint);
   margin-bottom: 10px;
@@ -166,7 +178,7 @@ main { display: flex; flex-direction: column; }
 .switch-row + .switch-row,
 .translate-options .switch-row { margin-top: 10px; }
 .switch-label {
-  font-size: 12.5px;
+  font-size: var(--text-body);
   line-height: 1.45;
   display: inline-flex;
   align-items: center;
@@ -181,7 +193,7 @@ main { display: flex; flex-direction: column; }
   inset: 0;
   background: var(--rule);
   border-radius: 999px;
-  transition: background 0.2s var(--ease);
+  transition: background 0.2s var(--ease-standard);
 }
 .thumb {
   position: absolute;
@@ -191,19 +203,42 @@ main { display: flex; flex-direction: column; }
   height: 14px;
   background: var(--paper-2);
   border-radius: 50%;
-  transition: transform 0.2s var(--ease);
+  transition: transform 0.2s var(--ease-standard);
 }
 .switch input:checked ~ .track { background: var(--cover); }
-.switch input:checked ~ .track .thumb { transform: translateX(-15px); }
+/* Physical translateX hardcoded to RTL looked correct only because popup.html
+   is dir="rtl" — see tokens.css's --dir comment. The coefficient here is +15,
+   not -15: --dir is -1 under RTL, and 15 * -1 = -15, which is the existing
+   (correct) on-screen move; the same rule then gives +15 — mirrored, and
+   correct — if this switch is ever used inside an LTR island. Verified by
+   reading the computed transform matrix at both --dir values, since the sign
+   is easy to get backwards and look right by accident in whichever direction
+   you tested. */
+.switch input:checked ~ .track .thumb { transform: translateX(calc(15px * var(--dir))); }
 .switch input:focus-visible ~ .track { outline: 1.5px solid var(--ink); outline-offset: 2px; }
 
-.translate-options { margin-top: 10px; display: flex; flex-direction: column; }
-.translate-options.hidden { display: none; }
+.translate-options {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  opacity: 1;
+  transition: opacity var(--dur-base) var(--ease-entrance),
+    display var(--dur-base) var(--ease-entrance) allow-discrete;
+}
+.translate-options.hidden {
+  display: none;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-exit),
+    display var(--dur-fast) var(--ease-exit) allow-discrete;
+}
+@starting-style {
+  .translate-options:not(.hidden) { opacity: 0; }
+}
 
 .field { display: flex; align-items: center; gap: 10px; }
 .field-label {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--text-sec);
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -222,17 +257,17 @@ select {
   -webkit-appearance: none;
   text-align: start;
   font: inherit;
-  font-size: 12.5px;
+  font-size: var(--text-body);
   color: var(--ink);
   cursor: pointer;
-  transition: border-color 0.15s var(--ease);
+  transition: border-color 0.15s var(--ease-standard);
 }
 select:hover { border-color: var(--ink); }
 select:focus-visible { outline: 1.5px solid var(--ink); outline-offset: 1px; }
 
 .kindle-row { display: flex; align-items: baseline; justify-content: space-between; }
-.kindle-row .field-label { font-size: 12px; }
-.kindle-email { font-size: 12px; font-weight: 600; }
+.kindle-row .field-label { font-size: var(--text-sec); }
+.kindle-email { font-size: var(--text-sec); font-weight: 600; }
 .kindle-email a {
   color: var(--ink);
   text-decoration: none;
@@ -250,11 +285,11 @@ select:focus-visible { outline: 1.5px solid var(--ink); outline-offset: 1px; }
   border: 1.5px solid transparent;
   border-radius: 0;
   font: inherit;
-  font-size: 13px;
+  font-size: var(--text-body);
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s var(--ease), color 0.15s var(--ease),
-    transform 0.08s var(--ease), border-color 0.15s var(--ease);
+  transition: background 0.15s var(--ease-standard), color 0.15s var(--ease-standard),
+    transform 0.08s var(--ease-standard), border-color 0.15s var(--ease-standard);
 }
 .btn:disabled { opacity: 0.38; cursor: not-allowed; }
 .btn:focus-visible { outline: 1.5px solid var(--ink); outline-offset: 2px; }
@@ -267,31 +302,29 @@ select:focus-visible { outline: 1.5px solid var(--ink); outline-offset: 1px; }
 
 .status {
   margin: 0 16px 12px;
-  font-size: 12px;
+  font-size: var(--text-sec);
   padding: 9px 11px;
   line-height: 1.55;
   border-inline-start: 3px solid currentColor;
+  opacity: 1;
+  transition: opacity var(--dur-base) var(--ease-entrance),
+    display var(--dur-base) var(--ease-entrance) allow-discrete;
 }
-.status.hidden { display: none; }
+.status.hidden {
+  display: none;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-exit),
+    display var(--dur-fast) var(--ease-exit) allow-discrete;
+}
+@starting-style {
+  .status:not(.hidden) { opacity: 0; }
+}
 .status.ok { background: var(--ok-bg); color: var(--ok); }
 .status.err { background: var(--danger-bg); color: var(--danger); }
 .status.working,
 .status.info { background: var(--paper-2); color: var(--muted); }
 .status a { color: inherit; font-weight: 600; }
 .status b { font-weight: 600; }
-
-.spinner {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border: 2px solid var(--rule);
-  border-top-color: currentColor;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-  vertical-align: -1px;
-  margin-inline-end: 7px;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── footer ────────────────────────────────────────────────────────────── */
 
@@ -306,18 +339,21 @@ select:focus-visible { outline: 1.5px solid var(--ink); outline-offset: 1px; }
   background: none;
   border: none;
   font: inherit;
-  font-size: 11px;
+  font-size: var(--text-sec);
   color: var(--muted);
   cursor: pointer;
   padding: 5px 4px;
   border-bottom: 1.5px solid transparent;
-  transition: color 0.15s var(--ease), border-color 0.15s var(--ease);
+  /* Same instant-in/animated-out split as .cover-swatch above — see that
+     comment. Nothing else on this element transitions, so the hover rule can
+     zero the whole shorthand rather than naming each property. */
+  transition: color var(--dur-base) var(--ease-standard), border-color var(--dur-base) var(--ease-standard);
 }
-.tool-link:hover { color: var(--ink); border-bottom-color: var(--cover); }
+.tool-link:hover { color: var(--ink); border-bottom-color: var(--cover); transition-duration: 0s; }
 .tool-link:focus-visible { outline: 1.5px solid var(--ink); outline-offset: 2px; }
 
 .fallback-note { text-align: center; padding: 0 16px 13px; }
-.fallback-note a { color: var(--faint); font-size: 10.5px; text-decoration: none; }
+.fallback-note a { color: var(--faint); font-size: var(--text-micro); text-decoration: none; }
 .fallback-note a:hover { color: var(--muted); }
 
 .hidden { display: none; }
