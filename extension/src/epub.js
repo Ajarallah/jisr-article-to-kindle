@@ -15,7 +15,7 @@
  */
 
 import { fetchWithTimeout } from "./net.js";
-import { COVER_INK, COVER_TEXT, COVER_FONT_RTL, COVER_FONT_LTR, coverStyle } from "./covers.js";
+import { COVER_TEXT, COVER_FONT_RTL, COVER_FONT_LTR, COVER_FONT_WEIGHT, paintCoverBackground } from "./covers.js";
 
 // Embedding guards: keep opt-in image embedding from blowing past the 50 MB
 // Send-to-Kindle limit or exhausting memory on a gallery page.
@@ -361,11 +361,9 @@ async function generateCoverJpeg(article, isRtl, styleId) {
     // --cover-text). The popup previews this image; if you change one, change both.
     const canvas = new OffscreenCanvas(W, H);
     const ctx = canvas.getContext("2d");
-    ctx.fillStyle = COVER_INK;
-    ctx.fillRect(0, 0, W, H);
-    // The chosen background, drawn under the type. Its CSS twin renders the same
-    // pattern in the popup's live preview (see covers.js).
-    coverStyle(styleId).draw(ctx, W, H);
+    // Ink, then the chosen texture over it. The popup shows the same file as a
+    // CSS background, so the preview and the artifact are the one image.
+    await paintCoverBackground(ctx, W, H, styleId);
 
     const family = isRtl ? COVER_FONT_RTL : COVER_FONT_LTR;
     ctx.direction = isRtl ? "rtl" : "ltr";
@@ -374,12 +372,12 @@ async function generateCoverJpeg(article, isRtl, styleId) {
 
     // Wordmark, mirroring the popup's cover-top row.
     ctx.fillStyle = COVER_TEXT;
-    ctx.font = `bold 62px ${family}`;
+    ctx.font = `${COVER_FONT_WEIGHT} 62px ${family}`;
     ctx.globalAlpha = 0.9;
     ctx.fillText("جسر", x, margin + 60);
     ctx.globalAlpha = 1;
 
-    ctx.font = `bold 104px ${family}`;
+    ctx.font = `${COVER_FONT_WEIGHT} 104px ${family}`;
     const lines = wrapText(ctx, article.title || "بدون عنوان", W - margin * 2).slice(0, 8);
     let y = 620;
     for (const ln of lines) {

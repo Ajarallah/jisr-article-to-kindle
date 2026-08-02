@@ -95,12 +95,14 @@ body {
 
 .cover-styles { display: flex; gap: 6px; margin-top: 12px; }
 .cover-swatch {
-  width: 26px;
-  height: 20px;
+  width: 24px;
+  height: 32px;
+  background-color: var(--cover);
+  background-size: cover;
+  background-position: center;
   flex: none;
   padding: 0;
   cursor: pointer;
-  background-color: var(--cover);
   border: 1.5px solid var(--cover-rule);
   transition: border-color 0.15s var(--ease), transform 0.08s var(--ease);
 }

@@ -6,7 +6,7 @@ import { addHistoryEntry } from "./history.js";
 import { addToList } from "./readinglist.js";
 import { annotateHtml } from "./glossary.js";
 import { createProgress, isCancel } from "./progress.js";
-import { COVER_STYLES, coverStyle } from "./covers.js";
+import { COVER_STYLES, coverStyle, textureUrl } from "./covers.js";
 
 const els = {
   title: document.getElementById("articleTitle"),
@@ -28,6 +28,7 @@ const els = {
   actions: document.getElementById("actions"),
   coverStyles: document.getElementById("coverStyles"),
   cover: document.querySelector(".cover"),
+  embedImages: document.getElementById("embedImages"),
 };
 
 let article = null;
@@ -94,10 +95,14 @@ function openAmazonLogin() {
  * label for it. Choosing one repaints the cover immediately and persists the
  * preference, because the cover above IS the artifact being configured.
  */
+function coverBackground(style) {
+  const url = textureUrl(style);
+  return url ? `url("${url}")` : "";
+}
+
 function applyCoverStyle(id) {
   const style = coverStyle(id);
-  els.cover.style.backgroundImage = style.css || "";
-  els.cover.style.backgroundSize = style.size || "";
+  els.cover.style.backgroundImage = coverBackground(style);
   for (const btn of els.coverStyles.children) {
     btn.setAttribute("aria-checked", String(btn.dataset.style === style.id));
   }
@@ -114,8 +119,7 @@ function buildCoverPicker() {
     btn.setAttribute("aria-checked", "false");
     btn.title = style.label;
     btn.setAttribute("aria-label", style.label);
-    btn.style.backgroundImage = style.css || "";
-    btn.style.backgroundSize = style.size || "";
+    btn.style.backgroundImage = coverBackground(style);
     btn.addEventListener("click", () => {
       settings.coverStyle = style.id;
       applyCoverStyle(style.id);
@@ -131,6 +135,11 @@ async function initSettings() {
   els.translateToggle.checked = !!settings.translateByDefault;
   els.translateOptions.classList.toggle("hidden", !settings.translateByDefault);
   if (settings.defaultTargetLang) els.targetLang.value = settings.defaultTargetLang;
+  els.embedImages.checked = !!settings.embedImages;
+  els.embedImages.addEventListener("change", () => {
+    settings.embedImages = els.embedImages.checked;
+    saveSettings({ embedImages: settings.embedImages });
+  });
   buildCoverPicker();
 }
 

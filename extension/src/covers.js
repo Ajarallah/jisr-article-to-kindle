@@ -1,103 +1,85 @@
 /*
  * Cover backgrounds.
  *
- * Drawn, not shipped. Every style is a few canvas operations and a matching CSS
- * background — no raster assets, so the extension gains nothing in weight, the
- * pattern adapts to any title length, and there is no third-party image licence
- * to carry.
+ * Real photographic texture — paper, plaster, linen, parchment, concrete, ink in
+ * water — not scenes. A photograph with a subject fights the title for
+ * attention and ties the cover to a topic, which is wrong when the same six
+ * options must suit an article about psychology and one about compilers. Texture
+ * carries the depth of a real photo while staying subject-neutral.
  *
- * The two renderings live side by side ON PURPOSE. The popup shows the cover as
- * a live preview of the EPUB, so the CSS and the canvas must agree; keeping them
- * in one object is what makes a mismatch obvious when either is edited.
+ * They ship already reduced to a duotone of the brand inks, which does three
+ * jobs at once: the cover still reads as vermilion rather than as a photo, the
+ * title stays the brightest thing on the page, and a single-hue image compresses
+ * far harder than a grey one. All six weigh 276 KB together at 640x960 — small
+ * because the canvas upscales them, and the softness that causes is wanted in a
+ * backdrop.
  *
- * All of them keep the brand vermilion and stay flat: hairlines, dots and a
- * single arc. No gradients, no glow, no imagery competing with the title.
+ * Because the duotone is baked in, changing COVER_INK means re-exporting the
+ * textures; that trade buys identical rendering in the popup and the EPUB with
+ * no runtime processing in either.
+ *
+ * Sources: Unsplash (unsplash.com/license — bundling inside an application is
+ * permitted; reselling the images or building a competing stock service is not).
+ * Photo ids are listed in textures/CREDITS.md.
  */
 
 export const COVER_INK = "#CB3F28";
 export const COVER_TEXT = "#F7F2E7";
 
-// Cover text is drawn to a raster image, so the typeface is rasterised into
-// pixels and no font file is ever distributed. Thmanyah is used when the reader
-// has it installed and Plex carries everyone else.
-export const COVER_FONT_RTL = '"thmanyah serif display", "IBM Plex Sans Arabic", serif';
-export const COVER_FONT_LTR = '"thmanyah serif display", "IBM Plex Sans", Georgia, serif';
-
-const LINE = "rgba(247,242,231,0.22)";
-const LINE_CSS = "rgba(247,242,231,0.22)";
+/*
+ * Cover type. The cover is rasterised to JPEG, so the typeface becomes pixels
+ * and no font file is ever distributed — that is design work, which font
+ * licences permit even when they forbid shipping the font itself.
+ * "The Year of Handicrafts" at Black is the intended face; it has to be
+ * installed on the reader's machine, and Plex carries everyone else.
+ */
+export const COVER_FONT_RTL = '"The Year of Handicrafts", "IBM Plex Sans Arabic", sans-serif';
+export const COVER_FONT_LTR = '"The Year of Handicrafts", "IBM Plex Sans", Georgia, serif';
+export const COVER_FONT_WEIGHT = 900;
 
 export const COVER_STYLES = [
-  {
-    id: "plain",
-    label: "سادة",
-    css: "",
-    draw() {},
-  },
-  {
-    id: "rules",
-    label: "مسطَّر",
-    // Ruled paper: the page the article becomes.
-    css: `repeating-linear-gradient(to bottom, transparent 0 13px, ${LINE_CSS} 13px 14px)`,
-    draw(ctx, W, H) {
-      ctx.fillStyle = LINE;
-      for (let y = 0; y < H; y += 88) ctx.fillRect(0, y, W, 5);
-    },
-  },
-  {
-    id: "grid",
-    label: "شبكة",
-    css: `repeating-linear-gradient(to bottom, transparent 0 15px, ${LINE_CSS} 15px 16px), repeating-linear-gradient(to right, transparent 0 15px, ${LINE_CSS} 15px 16px)`,
-    draw(ctx, W, H) {
-      ctx.fillStyle = LINE;
-      for (let y = 0; y < H; y += 96) ctx.fillRect(0, y, W, 4);
-      for (let x = 0; x < W; x += 96) ctx.fillRect(x, 0, 4, H);
-    },
-  },
-  {
-    id: "dots",
-    label: "منقَّط",
-    // background-image alone cannot carry the `/ size` shorthand, so the tile
-    // size travels separately (see `size` handling in the popup picker).
-    css: `radial-gradient(${LINE_CSS} 1.1px, transparent 1.2px)`,
-    size: "14px 14px",
-    draw(ctx, W, H) {
-      ctx.fillStyle = LINE;
-      const step = 84;
-      for (let y = step / 2; y < H; y += step) {
-        for (let x = step / 2; x < W; x += step) {
-          ctx.beginPath();
-          ctx.arc(x, y, 6, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-    },
-  },
-  {
-    id: "arch",
-    label: "قوس",
-    // One large arc rising from the foot of the cover. A single geometric
-    // gesture, not ornament.
-    css: `radial-gradient(circle at 50% 118%, transparent 0 42%, ${LINE_CSS} 42% 42.7%, transparent 43%)`,
-    draw(ctx, W, H) {
-      ctx.strokeStyle = LINE;
-      ctx.lineWidth = 7;
-      ctx.beginPath();
-      ctx.arc(W / 2, H * 1.18, W * 0.62, Math.PI, Math.PI * 2);
-      ctx.stroke();
-    },
-  },
-  {
-    id: "margin",
-    label: "هامش",
-    // A printer's margin rule down the binding edge.
-    css: `linear-gradient(to left, transparent 0 calc(100% - 26px), ${LINE_CSS} calc(100% - 26px) calc(100% - 25px), transparent calc(100% - 25px))`,
-    draw(ctx, W, H) {
-      ctx.fillStyle = LINE;
-      ctx.fillRect(W - 168, 0, 5, H);
-    },
-  },
+  { id: "plain", label: "سادة", texture: null },
+  { id: "paper", label: "ورق", texture: "paper.jpg" },
+  { id: "plaster", label: "جصّ", texture: "plaster.jpg" },
+  { id: "parchment", label: "رَقّ", texture: "parchment.jpg" },
+  { id: "linen", label: "كتّان", texture: "linen.jpg" },
+  { id: "concrete", label: "خرسانة", texture: "concrete.jpg" },
+  { id: "ink", label: "حبر", texture: "ink.jpg" },
 ];
 
 export function coverStyle(id) {
   return COVER_STYLES.find((s) => s.id === id) || COVER_STYLES[0];
+}
+
+// Extension-relative URL for a style's texture, or null for the plain cover.
+// Outside the extension (test harness) there is no runtime, so callers fall back
+// to the flat ink.
+export function textureUrl(style) {
+  if (!style || !style.texture) return null;
+  if (typeof chrome === "undefined" || !chrome.runtime || !chrome.runtime.getURL) return null;
+  return chrome.runtime.getURL("textures/" + style.texture);
+}
+
+/*
+ * Paint the background onto a cover canvas: the flat ink first so a texture that
+ * fails to load still leaves a correct cover, then the texture scaled to cover
+ * the canvas (centre-cropped, never stretched).
+ */
+export async function paintCoverBackground(ctx, W, H, styleId) {
+  ctx.fillStyle = COVER_INK;
+  ctx.fillRect(0, 0, W, H);
+  const url = textureUrl(coverStyle(styleId));
+  if (!url) return;
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) return;
+    const bitmap = await createImageBitmap(await resp.blob());
+    const scale = Math.max(W / bitmap.width, H / bitmap.height);
+    const w = bitmap.width * scale;
+    const h = bitmap.height * scale;
+    ctx.drawImage(bitmap, (W - w) / 2, (H - h) / 2, w, h);
+    if (bitmap.close) bitmap.close();
+  } catch {
+    /* a missing texture is cosmetic — the flat ink underneath is already correct */
+  }
 }
