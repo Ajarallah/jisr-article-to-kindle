@@ -15,6 +15,10 @@
     cover, which is the whole point of the direction.
   -->
   <header class="cover grain">
+    <!-- The motif: a large low-opacity glyph in the corner, same file and same
+         geometry the EPUB's canvas cover draws (see covers.js). It sits first in
+         DOM so the title/meta below (same z-index via ".cover > *") paint over it. -->
+    <div id="coverMotif" class="cover-motif" aria-hidden="true"></div>
     <div class="cover-top">
       <span class="wordmark">جسر</span>
       <span class="cover-kicker">غلاف الكتاب</span>
@@ -28,10 +32,18 @@
     <div id="articleTitle" class="title skeleton">جارٍ قراءة الصفحة…</div>
     <div id="articleMeta" class="meta"></div>
     <input id="authorInput" class="author-input hidden" type="text" placeholder="الكاتب (اختياري)" />
-    <!-- Backgrounds are drawn, never shipped as images (covers.js). The swatches
-         and the cover above share one source, so picking one changes the actual
-         artifact rather than a preview of it. -->
-    <div id="coverStyles" class="cover-styles" role="radiogroup" aria-label="خلفية الغلاف"></div>
+    <!-- Motifs are drawn from vendored line-art icons, never shipped as photos
+         (covers.js). The swatches and the cover above share one source, so
+         picking one changes the actual artifact rather than a preview of it. -->
+    <div class="cover-row">
+      <div id="coverStyles" class="cover-styles" role="radiogroup" aria-label="غلاف المقال"></div>
+      <button id="suggestCoverBtn" class="cover-suggest" type="button" title="إنشاء غلاف" aria-label="إنشاء غلاف مقترح من العنوان">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3v3.5" /><path d="M12 17.5V21" /><path d="M3 12h3.5" /><path d="M17.5 12H21" />
+          <path d="M5.6 5.6l2.5 2.5" /><path d="M15.9 15.9l2.5 2.5" /><path d="M18.4 5.6l-2.5 2.5" /><path d="M8.1 15.9l-2.5 2.5" />
+        </svg>
+      </button>
+    </div>
   </header>
 
   <main>

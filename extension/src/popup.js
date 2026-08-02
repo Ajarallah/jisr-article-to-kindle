@@ -6,7 +6,7 @@ import { addHistoryEntry } from "./history.js";
 import { addToList } from "./readinglist.js";
 import { annotateHtml } from "./glossary.js";
 import { createProgress, isCancel } from "./progress.js";
-import { COVER_STYLES, coverStyle, textureUrl } from "./covers.js";
+import { COVER_STYLES, coverStyle, iconUrl, suggestCoverStyle } from "./covers.js";
 
 const els = {
   title: document.getElementById("articleTitle"),
@@ -29,6 +29,8 @@ const els = {
   coverStyles: document.getElementById("coverStyles"),
   cover: document.querySelector(".cover"),
   embedImages: document.getElementById("embedImages"),
+  coverMotif: document.getElementById("coverMotif"),
+  suggestCoverBtn: document.getElementById("suggestCoverBtn"),
 };
 
 let article = null;
@@ -78,6 +80,7 @@ function adoptPicked(picked) {
   els.title.textContent = article.title;
   els.title.classList.remove("skeleton");
   els.title.setAttribute("dir", article.dir);
+  applyCoverMotif(settings.coverStyle);
   const words = Math.max(1, Math.round(article.textLength / 6));
   els.meta.textContent = `منطقة مختارة يدويًا · ${words.toLocaleString("ar")} كلمة`;
   els.sendBtn.disabled = false;
@@ -95,17 +98,41 @@ function openAmazonLogin() {
  * label for it. Choosing one repaints the cover immediately and persists the
  * preference, because the cover above IS the artifact being configured.
  */
-function coverBackground(style) {
-  const url = textureUrl(style);
-  return url ? `url("${url}")` : "";
+// The `mask-image` technique: the SVG's alpha channel becomes a stencil over a
+// solid background-color, so one currentColor-stroked file recolors for both
+// the tiny swatch and the full-size cover motif with no separate colored asset.
+function setMask(el, style) {
+  const url = iconUrl(style);
+  const mask = url ? `url("${url}")` : "none";
+  el.style.maskImage = mask;
+  el.style.webkitMaskImage = mask;
+}
+
+// The motif sits on whichever side is "inline-end" for the ARTICLE's own
+// direction — matching paintCoverBackground's canvas math in covers.js exactly
+// (RTL bleeds off the left, LTR off the right), not the popup chrome's own
+// (always-RTL) direction.
+function applyCoverMotif(id) {
+  const style = coverStyle(id);
+  const isRtl = !article || article.dir !== "ltr";
+  setMask(els.coverMotif, style);
+  els.coverMotif.classList.toggle("side-left", isRtl);
+  els.coverMotif.classList.toggle("side-right", !isRtl);
+  els.coverMotif.style.display = style.icon ? "" : "none";
 }
 
 function applyCoverStyle(id) {
   const style = coverStyle(id);
-  els.cover.style.backgroundImage = coverBackground(style);
+  applyCoverMotif(style.id);
   for (const btn of els.coverStyles.children) {
     btn.setAttribute("aria-checked", String(btn.dataset.style === style.id));
   }
+}
+
+function chooseCoverStyle(id) {
+  settings.coverStyle = id;
+  applyCoverStyle(id);
+  saveSettings({ coverStyle: id });
 }
 
 function buildCoverPicker() {
@@ -119,15 +146,19 @@ function buildCoverPicker() {
     btn.setAttribute("aria-checked", "false");
     btn.title = style.label;
     btn.setAttribute("aria-label", style.label);
-    btn.style.backgroundImage = coverBackground(style);
-    btn.addEventListener("click", () => {
-      settings.coverStyle = style.id;
-      applyCoverStyle(style.id);
-      saveSettings({ coverStyle: style.id });
-    });
+    setMask(btn, style);
+    btn.addEventListener("click", () => chooseCoverStyle(style.id));
     els.coverStyles.appendChild(btn);
   }
   applyCoverStyle(settings.coverStyle);
+}
+
+// "إنشاء غلاف" — score the current title against each category's keywords and
+// jump straight to a matching (or, absent any match, random) style. See
+// suggestCoverStyle in covers.js for the scoring/tie-breaking rule.
+function suggestCover() {
+  const title = (els.title.textContent || (article && article.title) || "").trim();
+  chooseCoverStyle(suggestCoverStyle(title));
 }
 
 async function initSettings() {
@@ -140,6 +171,7 @@ async function initSettings() {
     settings.embedImages = els.embedImages.checked;
     saveSettings({ embedImages: settings.embedImages });
   });
+  els.suggestCoverBtn.addEventListener("click", suggestCover);
   buildCoverPicker();
 }
 
@@ -179,6 +211,7 @@ async function extractCurrentArticle() {
     els.title.textContent = article.title;
     els.title.classList.remove("skeleton");
     els.title.setAttribute("dir", article.dir);
+    applyCoverMotif(settings.coverStyle);
     const words = Math.max(1, Math.round(article.textLength / 6));
     const bits = [];
     if (article.siteName) bits.push(article.siteName);

@@ -364,7 +364,7 @@ async function generateCoverJpeg(article, isRtl, styleId) {
     const ctx = canvas.getContext("2d");
     // Ink, then the chosen texture over it. The popup shows the same file as a
     // CSS background, so the preview and the artifact are the one image.
-    await paintCoverBackground(ctx, W, H, styleId);
+    await paintCoverBackground(ctx, W, H, styleId, isRtl);
 
     const family = isRtl ? COVER_FONT_RTL : COVER_FONT_LTR;
     ctx.direction = isRtl ? "rtl" : "ltr";
