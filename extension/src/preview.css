@@ -47,8 +47,8 @@ body {
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s var(--ease), color 0.15s var(--ease),
-    transform 0.08s var(--ease), border-color 0.15s var(--ease);
+  transition: background 0.15s var(--ease-standard), color 0.15s var(--ease-standard),
+    transform 0.08s var(--ease-standard), border-color 0.15s var(--ease-standard);
 }
 .btn:disabled { opacity: 0.42; cursor: not-allowed; }
 .btn:focus-visible { outline: 1.5px solid var(--cover-text); outline-offset: 2px; }
@@ -65,25 +65,23 @@ body {
   line-height: 1.5;
   flex: none;
   border-inline-start: 3px solid currentColor;
+  opacity: 1;
+  transition: opacity var(--dur-base) var(--ease-entrance),
+    display var(--dur-base) var(--ease-entrance) allow-discrete;
 }
-.status.hidden { display: none; }
+.status.hidden {
+  display: none;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-exit),
+    display var(--dur-fast) var(--ease-exit) allow-discrete;
+}
+@starting-style {
+  .status:not(.hidden) { opacity: 0; }
+}
 .status.ok { background: var(--ok-bg); color: var(--ok); }
 .status.err { background: var(--danger-bg); color: var(--danger); }
 .status.info, .status.working { background: var(--paper-2); color: var(--muted); }
 .status a { color: inherit; font-weight: 600; }
-
-.spinner {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border: 2px solid var(--rule);
-  border-top-color: currentColor;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-  vertical-align: -1px;
-  margin-inline-end: 7px;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
 
 .stage { flex: 1; min-height: 0; padding: 24px; display: flex; justify-content: center; overflow: auto; }
 /* The sheet: the only element in the system allowed a shadow — it is paper
