@@ -1,12 +1,46 @@
-# جسر · Jisr
+<p align="center">
+  <img src="extension/icons/icon128.png" width="96" alt="Jisr icon" />
+</p>
 
-Turn any article you're reading into a clean **EPUB** and send it straight to your
-Kindle — in one click, from a **single browser extension**. First-class
-**Arabic / right‑to‑left** support and optional **AI translation** are built in.
+<h1 align="center">جسر · Jisr</h1>
 
-No email. No "approved sender" list. No companion app. No server. It works the
-same way Amazon's own *Send to Kindle* extension does: through the Amazon account
-you're already signed into.
+<p align="center">
+  Turn the article in your browser into a polished EPUB, translate it when needed,
+  and send it directly to your Kindle library.
+</p>
+
+<p align="center">
+  <a href=".github/workflows/ci.yml"><img alt="CI" src="https://github.com/Ajarallah/jisr-article-to-kindle/actions/workflows/ci.yml/badge.svg" /></a>
+  <img alt="Chrome Manifest V3" src="https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4?logo=googlechrome&logoColor=white" />
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-171512" /></a>
+</p>
+
+No email, approved-sender list, companion app, or Jisr server is involved. Delivery
+uses your existing Amazon session, while extraction and EPUB generation happen
+locally inside the browser. Arabic, RTL layout, bilingual books, study glossaries,
+and optional AI translation are built in.
+
+## Product tour
+
+<p align="center">
+  <img src="media/screenshots/jisr-popup.png" width="372" alt="Jisr extension popup showing a live Kindle cover and send controls" />
+</p>
+
+<p align="center"><sub>The article becomes a live book-cover preview before it is sent or downloaded.</sub></p>
+
+### More than a web clipper
+
+<p align="center">
+  <img src="media/screenshots/jisr-file-to-kindle.png" width="860" alt="Jisr file-to-Kindle interface for Markdown and Word documents" />
+</p>
+
+<p align="center"><sub>Drop a Markdown or Word document and turn it into a clean Kindle book.</sub></p>
+
+<details>
+  <summary><strong>Book, translation, image, and Kindle-device settings</strong></summary>
+  <br />
+  <img src="media/screenshots/jisr-settings.png" alt="Jisr settings for delivery, translation, images, typography, and Kindle cover sizing" />
+</details>
 
 ---
 
@@ -20,29 +54,36 @@ Every "send to Kindle" tool falls into one of two camps:
 - **Amazon's official extension**: clean and serverless — but it doesn't do clean
   Arabic (RTL) rendering, and it can't translate.
 
-Article to Kindle takes the **clean, serverless delivery** of Amazon's own
-extension and adds the two things it lacks: **proper Arabic** and **AI
-translation**.
+Jisr keeps the **clean, serverless delivery** of Amazon's own extension and adds
+what it lacks: reliable Arabic publishing, controllable EPUB output, translation,
+and study-oriented reading modes.
 
 ## Features
 
-- **One‑click send** to your Kindle library (syncs to every device + the Kindle app).
+- **One-click send** to your Kindle library, or download the EPUB and use the
+  official Send to Kindle page as a fallback.
 - **Robust extraction** — Mozilla Readability with a **main-region fallback** for
   pages that split content across sibling containers (e.g. AWS/AEM "what-is"
   pages), where naive extractors grab only the first section. Works on
   paywalled / logged-in pages you can already read (it reads the rendered page).
-- **Clean EPUB3** output — not Amazon's lossy web capture.
+- **Clean EPUB3** output with navigable TOC, preserved code and tables, popup
+  footnotes, source metadata, image limits, and strict XHTML checks.
 - **Arabic & RTL done right** — content-based whole-document direction,
-  `page-progression-direction`, `dir="rtl"`, and an **embedded Amiri font** so
-  Arabic never renders as empty boxes on Kindle. Inline English inside Arabic
-  renders correctly.
-- **Built-in AI translation** before sending (English ⇄ Arabic and more), via
-  OpenRouter (`deepseek/deepseek-v4-flash`), in a literary Arabic register: فصحى وسطى, no tashkeel.
+  `page-progression-direction`, `dir="rtl"`, bidi-safe inline English, and a
+  choice between embedded Amiri and the Kindle's native font.
+- **Built-in AI translation** via OpenRouter, with bounded concurrent batches,
+  retries, model fallback, cancellation, and structural checks that prevent a
+  malformed response from silently blanking the article.
+- **Bilingual and study modes** — interleave the source with its translation and
+  optionally annotate terms as Kindle popup-footnote glossaries.
+- **Book-quality covers** — use the article's lead image or a generated motif,
+  edit title and author in place, and size the cover for the selected Kindle.
 - **Drag & drop files** — drop a Markdown (`.md`) or Word (`.docx`) file (e.g. a
   ChatGPT answer you exported) and it becomes a clean EPUB on your Kindle.
-- **Preview before send** — see the built article (and your translation) in a
-  reader view before it goes to your Kindle.
-- **Download EPUB** instead of sending, any time.
+- **Preview, selection, and recovery tools** — preview before sending, send only
+  selected text, manually pick the right page region, and cancel long jobs.
+- **Reading list and local history** — combine several articles into one EPUB and
+  reopen recently sent sources without creating an account.
 - **Private by design** — see [Privacy](#privacy).
 
 ## How it works
@@ -69,8 +110,8 @@ server** in the delivery path.
 
 ## Install (developer mode)
 
-```
-1. Clone this repo.
+```text
+1. Clone https://github.com/Ajarallah/jisr-article-to-kindle.git.
 2. Open your browser's extensions page (brave://extensions or chrome://extensions).
 3. Enable "Developer mode".
 4. "Load unpacked" → select the extension/ folder.
@@ -81,11 +122,11 @@ A packaged zip for the Web Store is produced by `scripts/package-extension.sh`.
 
 ## Usage
 
-1. Open any article.
-2. Click the **المقال إلى كندل** toolbar icon.
-3. (Optional) toggle **translate** and pick a language.
-4. **إرسال إلى كندل** (Send to Kindle) — it appears on your Kindle in a minute or two.
-   Or **تنزيل EPUB** to just save the file.
+1. Open any article and click the **جسر** toolbar icon.
+2. Review the extracted title, author, cover, and optional image setting.
+3. Optionally enable translation, bilingual mode, or the study glossary.
+4. Click **إرسال إلى كندل**. The book normally appears in your library within a
+   few minutes. Use **تنزيل** when you only want the EPUB.
 
 To send a **file** instead of a page, click *"أرسِل ملفًّا (md / docx)"* in the
 popup and drop your file. To review the article (and its translation) before it
@@ -93,12 +134,12 @@ goes to your Kindle, click *"معاينة قبل الإرسال"*.
 
 ### Translation
 
-Translation is built in and needs no setup: the build ships a key in
-`extension/src/secrets.js` (git-ignored — copy `secrets.example.js` and paste
-your own [OpenRouter](https://openrouter.ai) key). A key you enter yourself
-overrides the bundled one. Model: `deepseek/deepseek-v4-flash`, falling back
-to `deepseek/deepseek-v4-pro`, with retries on transient rate-limits. The article text
-goes straight from your browser to OpenRouter — never to us.
+Translation is built in and needs no setup in a prepared local build. Development
+builds read the OpenRouter key from `extension/src/secrets.js` (git-ignored — copy
+`secrets.example.js` and add your own key). A key entered by the user is stored in
+`chrome.storage.local`, never synced. The current primary model is
+`openai/gpt-5.6-luna`, with `deepseek/deepseek-v4-flash` as fallback. Article text
+goes from the browser to OpenRouter and never through a Jisr server.
 
 **Before publishing to a store:** a key inside an extension is not secret — the
 package is a plain zip. Move it behind a proxy you operate and repoint
@@ -120,24 +161,28 @@ telemetry, no accounts. Full policy: [`store/PRIVACY.md`](store/PRIVACY.md).
 extension/               the whole product — a Manifest V3 extension
   manifest.json
   src/
-    popup.*              toolbar UI + orchestration
-    options.*            settings (Amazon domain, translation key, defaults)
+    popup.*              toolbar UI, live cover, and orchestration
+    options.*            delivery, translation, image, and book preferences
     extract.js           article extraction (Readability)
-    epub.js              clean EPUB3 builder (RTL + embedded Arabic font)
-    translate.js         client-side structure-preserving translation (OpenRouter)
+    epub.js              clean EPUB3 builder (RTL, images, cover, TOC, font)
+    translate.js         structure-preserving translation (OpenRouter)
     deliver.js           Send-to-Kindle delivery (Amazon session; verified vs official)
+    covers.js            shared popup/EPUB cover artwork
+    glossary.js          study glossary as popup footnotes
+    readinglist.js       multi-article book queue
   lib/                   vendored: Readability, JSZip, Amiri font
 docs/                    research, architecture, decision log, competitive analysis
 store/                   privacy policy + Chrome Web Store listing
 scripts/                 packaging
-server/                  OPTIONAL / legacy — email fallback + an earlier OAuth
-                         delivery approach. Not needed for normal use (see DECISIONS D9–D11).
+server/                  Node-based test, lint, and icon-generation harness only
 ```
 
 ## Verification
 
-- **EPUB pipeline** is unit‑tested headlessly (jsdom): a real Arabic article →
-  valid EPUB3 with correct RTL markers. Run: `cd server && npm test`.
+- **54 automated tests** currently cover extraction, EPUB output, cover sizing,
+  delivery, translation recovery, glossary, cancellation, and imports. Run
+  `cd server && npm test`.
+- **ESLint and CI** run against the extension modules and Node test harness.
 - **Delivery protocol** is verified byte‑for‑byte against the official *Send to
   Kindle* extension source (endpoints, headers, field names, the
   `application/epub+zip` data type, the auth model). See
@@ -148,12 +193,16 @@ server/                  OPTIONAL / legacy — email fallback + an earlier OAuth
 
 ## Roadmap
 
-Parity ideas drawn from studying the official extension and competitors:
-
-- Preview‑before‑send.
-- Send history.
-- "Send selection" (send only highlighted text).
-- Target a specific device vs. the whole library.
+- Verify Arabic font shaping, bilingual layout, footnote popups, images, and
+  device-sized covers on physical Kindle hardware before making release claims.
+- Make lead-image covers request the image CDN origin when needed, then fall
+  back visibly to a generated motif instead of leaving an unexplained blank band.
+- Move long-running jobs from the disposable browser popup into a persistent
+  side panel.
+- Replace the crowded set of per-article switches with saved modes such as
+  “Quick send”, “Translated”, and “Bilingual + glossary”.
+- Move the bundled translation credential behind an operated proxy before a
+  public store release; credentials shipped inside an extension are extractable.
 
 ## Compatibility
 
