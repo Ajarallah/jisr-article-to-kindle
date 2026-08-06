@@ -5,8 +5,8 @@
 <h1 align="center">جسر · Jisr</h1>
 
 <p align="center">
-  <strong>من صفحة الويب إلى كتابٍ على كندل — بعربية سليمة.</strong><br />
-  Turn what you are reading into a polished Kindle book, without email setup or a middleman.
+  <strong>من أي مقال إلى كتاب كندل يليق بالقراءة.</strong><br />
+  Turn any article into a polished Kindle book — beautiful Arabic typesetting, optional AI translation, and no email setup or Jisr server.
 </p>
 
 <p align="center">
