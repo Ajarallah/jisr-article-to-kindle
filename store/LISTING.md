@@ -1,13 +1,13 @@
-# Chrome Web Store listing — Article to Kindle
+# Chrome Web Store listing — Jisr
 
 ## Name
-Article to Kindle — clean EPUB + Arabic
+Jisr — Article to Kindle
 
 ## Category
 Productivity
 
 ## Short description (≤132 chars)
-Send any article to your Kindle as a clean EPUB — with optional AI translation and proper Arabic (right-to-left) support.
+Turn any article into a clean Kindle book — with proper Arabic, optional AI translation, and direct Send to Kindle delivery.
 
 ## Detailed description
 
@@ -22,8 +22,8 @@ Unlike most "send to Kindle" tools, Article to Kindle:
   can already read are captured correctly — and your content stays private.
 • Renders Arabic and other right-to-left languages properly, with an embedded
   Arabic font so text is not broken into empty boxes on Kindle.
-• Optionally translates the article with AI before sending (deepseek-v4-flash by
-  default; bring your own key).
+• Optionally translates the article with AI before sending, using the user's
+  OpenRouter key and chosen model.
 • Also turns dropped Markdown (.md) or Word (.docx) files — e.g. a ChatGPT answer
   you exported — into clean EPUBs on your Kindle.
 
@@ -47,8 +47,9 @@ translation step.
 - **activeTab + scripting** — Only when the user clicks the extension, the
   extension reads the readable content of the current tab (via Mozilla
   Readability) to build the EPUB. No background or automatic page access.
-- **storage** — Stores the user's settings and their Amazon authorization token
-  locally in the browser. Nothing is sent to the developer.
+- **storage** — Stores preferences, the reading list, send history, and the
+  optional OpenRouter key in browser storage. Amazon authentication remains in
+  the browser-managed Amazon session; Jisr does not copy or store it.
 - **host access to amazon.com** — Required to deliver the generated EPUB to the
   user's Kindle library through Amazon's Send to Kindle service, authorized by
   the user's own Amazon sign-in.

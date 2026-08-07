@@ -1,54 +1,64 @@
-# Privacy Policy — Article to Kindle
+# Privacy Policy — Jisr
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-08-07_
 
-Article to Kindle is designed to be **private by default**. In its normal
-(default) mode it runs entirely in your browser and talks only to services you
-already own. The publisher operates **no server** in this default path and
-**collects, stores, and receives no personal data or article content**.
+Jisr is a browser extension that converts the page or file selected by the user into an EPUB and can deliver it to the user's Kindle library. Jisr's publisher operates no account system, analytics service, tracking system, or hosted content pipeline.
 
-## What the extension does with data
+## Data processed by the extension
 
-**Article content.** When — and only when — you click the extension on a page,
-it reads the readable content of that single active tab to build an EPUB. This
-happens locally in your browser. The content is not sent to the publisher.
+### Article and selected-page content
 
-**Delivery to Kindle (default: Amazon OAuth).** When you press send, the EPUB is
-uploaded **directly from your browser to Amazon** using your own Amazon account,
-authorized once via Amazon's sign-in (OAuth). The file goes to your Kindle
-library. The publisher never sees or handles the file. Your Amazon authorization
-token is stored locally in your browser (`chrome.storage`) and is sent only to
-Amazon.
+Jisr reads the active tab only after the user opens the extension or explicitly starts a selection action. Extraction and EPUB generation happen inside the browser. The publisher does not receive the article or generated EPUB.
 
-**Optional AI translation.** Only if you turn translation on: the article text is
-sent to OpenRouter (an AI gateway) using **your own OpenRouter API key**, which
-you enter and which is stored locally in your browser. That request goes directly
-from your browser to OpenRouter and is governed by OpenRouter's and the selected
-model provider's privacy policies. If you never enable translation, no text is
-ever sent anywhere except Amazon.
+If the user adds an article to the reading list, the article HTML and basic metadata are stored in `chrome.storage.local` on that browser. The list is capped at 20 entries and can be cleared by the user.
 
-**Settings.** Your preferences (default language, etc.) are stored locally in your
-browser via `chrome.storage`. They are not transmitted to the publisher.
+### Files
 
-## What we do NOT do
+Markdown and Word files are processed locally in the browser. Jisr does not upload them to the publisher.
 
-- No analytics, no tracking, no telemetry, no advertising identifiers.
-- No collection of browsing history, page contents, or personal information.
-- No sale or sharing of any data (there is none to sell or share).
-- No remote code: all logic ships inside the extension package.
+### Delivery to Kindle
 
-## Optional self-hosted fallback
+When the user chooses direct delivery, Jisr communicates with Amazon's Send to Kindle pages using the Amazon session already managed by the browser. The extension does not copy or store the user's Amazon password or session cookies.
 
-The project also offers an optional self-hosted backend (for email delivery or a
-translation proxy). If you choose to run it yourself, it runs on infrastructure
-**you** control with credentials **you** provide; the publisher has no access to
-it. Using it is entirely your choice.
+The generated EPUB is uploaded directly to the pre-signed Amazon S3 URL returned by Send to Kindle, then Amazon is asked to add the document to the user's library. Amazon processes this data under its own privacy terms.
 
-## Third parties you may connect to
+If direct delivery is unavailable, Jisr offers the EPUB as a local download. The user may then upload it through Amazon's official Send to Kindle page.
 
-- **Amazon** (Send to Kindle) — required for delivery; governed by Amazon's privacy policy.
-- **OpenRouter** — only if you enable translation; governed by OpenRouter's privacy policy.
+### Optional translation and study glossary
+
+Only when the user enables translation or the study glossary, Jisr sends the required article text to OpenRouter using the configured API key. OpenRouter may route the request to the selected model provider. Those services process the request under their own privacy and retention terms.
+
+Translation is optional. Building and downloading an EPUB do not require OpenRouter.
+
+### Images
+
+Image embedding is off by default. When the user enables it, Jisr asks for access to the relevant article or image origin and fetches the selected images directly from that site for inclusion in the EPUB.
+
+## Browser storage
+
+- **Preferences** are stored in `chrome.storage.sync` and may be synchronized by Google through the user's Chrome profile, depending on browser settings.
+- **The OpenRouter API key** is stored only in `chrome.storage.local`; Jisr removes keys left in sync storage by older versions.
+- **Reading-list content, temporary preview data, picked regions, and send history** are stored in `chrome.storage.local`.
+- **Send history** contains title, source URL, site, status, and timestamp. It does not contain the generated EPUB and is capped at 50 entries.
+
+The user can clear Jisr's stored data from the extension settings or by removing the extension.
+
+## What the publisher does not collect
+
+- No browsing history or automatic background page collection.
+- No analytics, telemetry, advertising identifiers, or behavioral tracking.
+- No Amazon credentials, OpenRouter keys, article content, files, or generated books received by the publisher.
+- No sale, rental, or sharing of personal information by the publisher.
+- No remotely hosted executable code; extension logic ships in the package.
+
+## Services contacted
+
+| Service | When | Data |
+|---|---|---|
+| Amazon Send to Kindle and Amazon S3 | Direct delivery | Generated EPUB and book metadata |
+| OpenRouter and the selected model provider | Translation or glossary enabled | Required article text and prompts |
+| Article/image host | Image embedding enabled | Ordinary image requests from the user's browser |
 
 ## Contact
 
-Questions: ajarallah93@gmail.com
+Privacy questions: ajarallah93@gmail.com
