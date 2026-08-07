@@ -1,120 +1,124 @@
+<div dir="rtl">
+
 <p align="center">
-  <img src="extension/icons/icon128.png" width="88" alt="Jisr icon" />
+  <img src="extension/icons/icon128.png" width="88" alt="أيقونة جسر" />
 </p>
 
 <h1 align="center">جسر · Jisr</h1>
 
 <p align="center">
   <strong>من أي مقال إلى كتاب كندل يليق بالقراءة.</strong><br />
-  Turn any article into a polished Kindle book — beautiful Arabic typesetting, optional AI translation, and no email setup or Jisr server.
+  تنضيد عربي جميل، وترجمة اختيارية بالذكاء الاصطناعي، وإرسال بلا إعداد للبريد ولا خادم وسيط من جسر.
 </p>
 
+<p align="center"><strong><a href="./README.en.md">English →</a></strong></p>
+
 <p align="center">
-  <a href="https://github.com/Ajarallah/jisr-article-to-kindle/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Ajarallah/jisr-article-to-kindle/actions/workflows/ci.yml/badge.svg" /></a>
+  <a href="https://github.com/Ajarallah/jisr-article-to-kindle/actions/workflows/ci.yml"><img alt="حالة الاختبارات" src="https://github.com/Ajarallah/jisr-article-to-kindle/actions/workflows/ci.yml/badge.svg" /></a>
   <img alt="Chrome Manifest V3" src="https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4?logo=googlechrome&logoColor=white" />
-  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-171512" /></a>
+  <a href="LICENSE"><img alt="رخصة MIT" src="https://img.shields.io/badge/license-MIT-171512" /></a>
 </p>
 
 <p align="center">
-  <img src="media/screenshots/jisr-hero.png" alt="Jisr translating an article and showing the bilingual Kindle book preview" />
+  <img src="media/screenshots/jisr-hero.png" alt="جسر يترجم مقالا ويعرض معاينة الكتاب الثنائي اللغة قبل إرساله إلى كندل" />
 </p>
 
 <p align="center">
-  <sub>Actual Jisr interfaces: translation and study controls on the left; the pre-send bilingual reader preview on the right.</sub>
+  <sub>واجهات جسر الفعلية: خيارات الترجمة والدراسة في اليسار، ومعاينة الكتاب الثنائي اللغة قبل الإرسال في اليمين.</sub>
 </p>
 
-## What Jisr does
+## ماذا يفعل جسر؟
 
-Jisr is a Chrome extension that turns the article open in your browser into a clean EPUB and sends it to your Kindle library. Extraction, book building, and cover generation happen locally in the browser.
+جسر إضافة لمتصفحات Chromium تحوّل المقال المفتوح أمامك إلى كتاب EPUB نظيف، ثم ترسله إلى مكتبة كندل. استخراج المحتوى وبناء الكتاب وإنشاء الغلاف تجري محليًا داخل المتصفح.
 
 <table>
   <tr>
     <td width="33%">
-      <strong>1 · Capture</strong><br />
-      Reads the rendered page you can already see, including logged-in and paywalled pages.
+      <strong>١ · يلتقط</strong><br />
+      يقرأ الصفحة المعروضة أمامك، بما فيها الصفحات التي تتطلب تسجيل الدخول أو اشتراكًا مدفوعًا.
     </td>
     <td width="33%">
-      <strong>2 · Build</strong><br />
-      Creates a Kindle-ready EPUB with typography, metadata, navigation, images, and a real cover.
+      <strong>٢ · يبني</strong><br />
+      ينشئ كتاب EPUB مهيأ لكندل، بتنضيد وبيانات وصفية وتنقّل وصور وغلاف حقيقي.
     </td>
     <td width="33%">
-      <strong>3 · Send</strong><br />
-      Delivers through your existing Amazon session, or downloads the EPUB for the official Send to Kindle page.
+      <strong>٣ · يرسل</strong><br />
+      يرسل الكتاب عبر جلسة Amazon المفتوحة، أو ينزّل ملف EPUB لاستخدام صفحة Send to Kindle الرسمية.
     </td>
   </tr>
 </table>
 
-No Jisr account. No approved-sender email. No article passing through a Jisr server.
+لا حساب في جسر، ولا بريد مرسل معتمد، ولا مقال يمر عبر خادم تابع لجسر.
 
-## Built for Arabic reading
+## صُمّم للقراءة العربية
 
-- Correct RTL book direction, bidi-safe English inside Arabic, and Arabic-aware typography.
-- Optional AI translation with retries, fallback, cancellation, and checks against missing text.
-- A bilingual mode that keeps the original beside each translated passage.
-- A study glossary that turns difficult terms into Kindle popup footnotes.
-- Editable title and author, article-image or generated covers, and cover sizes for current Kindle devices.
-- Reader preview before sending, plus EPUB download at every stage.
+- **اتجاه عربي صحيح** للكتاب، مع بقاء الإنجليزية داخل النص العربي واضحة في اتجاهها.
+- **ترجمة اختيارية بالذكاء الاصطناعي** مع إعادة المحاولة، ومسار احتياطي، وإمكانية الإلغاء، والتحقق من النصوص المفقودة.
+- **كتاب ثنائي اللغة** يحفظ النص الأصلي إلى جانب كل فقرة مترجمة.
+- **مسرد دراسي** يحوّل المصطلحات الصعبة إلى حواشٍ منبثقة داخل كندل.
+- **غلاف وبيانات قابلة للتحرير** — عدّل العنوان والمؤلف، واختر صورة المقال أو غلافًا مولّدًا ومقاسًا مناسبًا لجهازك.
+- **معاينة قبل الإرسال** مع إمكانية تنزيل EPUB في كل مرحلة.
 
-Jisr can also:
+ويستطيع جسر أيضًا:
 
-- turn Markdown and Word files into EPUBs;
-- send only highlighted text or a manually selected page region;
-- combine several saved articles into one book;
-- keep a private, local history of recently sent articles.
+- تحويل ملفات Markdown وWord إلى كتب EPUB؛
+- إرسال النص المظلّل وحده أو جزء تختاره من الصفحة؛
+- جمع عدة مقالات محفوظة في كتاب واحد؛
+- حفظ سجل خاص ومحلي للمقالات المرسلة حديثًا.
 
 <p align="center">
-  <img src="media/screenshots/jisr-more.png" alt="Jisr converting a file and combining several articles into one Kindle book" />
+  <img src="media/screenshots/jisr-more.png" alt="جسر يحوّل ملفا ويجمع عدة مقالات في كتاب كندل واحد" />
 </p>
 
 <p align="center">
-  <sub>Secondary workflows: convert a Markdown or Word file, or collect several articles into one book with its own table of contents.</sub>
+  <sub>مسارات إضافية: حوّل ملف Markdown أو Word، أو اجمع عدة مقالات في كتاب واحد له فهرس محتويات مستقل.</sub>
 </p>
 
-## Install
+## التثبيت
 
-Jisr is currently installed in developer mode:
+يُثبّت جسر حاليًا في وضع المطوّر:
 
 ```bash
 git clone https://github.com/Ajarallah/jisr-article-to-kindle.git
 ```
 
-1. Open `chrome://extensions` or `brave://extensions`.
-2. Enable **Developer mode**.
-3. Choose **Load unpacked**.
-4. Select the repository's `extension/` directory.
-5. Sign in to the Amazon account connected to your Kindle in the same browser.
+1. افتح `chrome://extensions` أو `brave://extensions`.
+2. فعّل **وضع المطوّر** (Developer mode).
+3. اختر **تحميل إضافة غير محزّمة** (Load unpacked).
+4. اختر مجلد `extension/` داخل المستودع.
+5. سجّل الدخول في المتصفح نفسه إلى حساب Amazon المرتبط بجهاز كندل.
 
-## Use
+## الاستعمال
 
-1. Open an article and click the **جسر** toolbar icon.
-2. Review the extracted title, author, and cover.
-3. Optionally include images, translate, create a bilingual book, or add a study glossary.
-4. Choose **معاينة** to inspect the book, then **إرسال إلى كندل** or **تنزيل**.
+1. افتح مقالًا، ثم اضغط أيقونة **جسر** في شريط المتصفح.
+2. راجع العنوان والمؤلف والغلاف المستخرجة.
+3. اختر إن كنت تريد تضمين الصور، أو الترجمة، أو كتابًا ثنائي اللغة، أو مسردًا دراسيًا.
+4. اضغط **معاينة** لفحص الكتاب، ثم **إرسال إلى كندل** أو **تنزيل**.
 
-The book usually appears in the Kindle library within a few minutes.
+يظهر الكتاب عادة في مكتبة كندل خلال دقائق قليلة.
 
-## Privacy and translation
+## الخصوصية والترجمة
 
-Normal delivery involves only the services required for the selected action:
+لا يتصل جسر إلا بالخدمات اللازمة للعملية التي تختارها:
 
-- **Amazon** receives the generated EPUB through your signed-in Send to Kindle session.
-- **OpenRouter** receives article text only when translation or the glossary is enabled.
+- تستقبل **Amazon** ملف EPUB المولّد عبر جلسة Send to Kindle المسجّل دخولها.
+- يستقبل **OpenRouter** نص المقال فقط عند تشغيل الترجمة أو المسرد الدراسي.
 
-Jisr has no analytics, tracking, account system, or hosted content pipeline. See the full [privacy policy](store/PRIVACY.md).
+لا يحتوي جسر على تحليلات أو تتبع أو نظام حسابات أو مسار مستضاف للمحتوى. راجع [سياسة الخصوصية الكاملة](store/PRIVACY.md).
 
-Development builds load an OpenRouter key from the git-ignored `extension/src/secrets.js`. A user-provided key is stored in `chrome.storage.local`, not synced. A public store release must put any bundled credential behind a controlled proxy because secrets shipped inside an extension can be extracted.
+تقرأ نسخة التطوير مفتاح OpenRouter من الملف المستبعد من Git:‏ `extension/src/secrets.js`. ويُحفظ المفتاح الذي يدخله المستخدم في `chrome.storage.local` دون مزامنته. ينبغي للنسخة العامة في المتجر وضع أي بيانات اعتماد مضمّنة خلف وسيط متحكم فيه، لأن الأسرار المرفقة داخل الإضافات قابلة للاستخراج.
 
-## Current status
+## الحالة الحالية
 
-Jisr is an active pre-release project.
+جسر مشروع نشط في مرحلة ما قبل الإصدار.
 
-- 54 automated tests cover extraction, EPUB output, delivery, translation recovery, covers, glossary behavior, and cancellation.
-- ESLint and GitHub Actions run on every pushed change.
-- Direct delivery has been verified against Amazon's Send to Kindle flow.
-- Final release claims still require repeated physical-Kindle checks for Arabic shaping, bilingual layout, popup footnotes, images, and device-specific covers.
-- Amazon's delivery endpoints are private and undocumented, so EPUB download remains a permanent fallback.
+- يغطي **54 اختبارًا آليًا** استخراج المقالات، وبناء EPUB، والإرسال، واستعادة الترجمة، والأغلفة، والمسرد، والإلغاء.
+- يعمل ESLint وGitHub Actions مع كل تغيير مرفوع.
+- جرى التحقق من الإرسال المباشر عبر مسار Send to Kindle التابع لـAmazon.
+- يحتاج الإصدار النهائي إلى اختبارات متكررة على أجهزة كندل فعلية للتحقق من تشكيل العربية، والتخطيط الثنائي اللغة، والحواشي المنبثقة، والصور، والأغلفة الخاصة بكل جهاز.
+- نقاط الإرسال التابعة لـAmazon خاصة وغير موثقة؛ لذلك يبقى تنزيل EPUB مسارًا احتياطيًا دائمًا.
 
-## Development
+## التطوير
 
 ```bash
 cd server
@@ -123,28 +127,30 @@ npm test
 npm run lint
 ```
 
-Package the extension:
+لبناء حزمة الإضافة:
 
 ```bash
 ./scripts/package-extension.sh
 ```
 
 <details>
-  <summary><strong>Architecture and technical notes</strong></summary>
+  <summary><strong>البنية والملاحظات التقنية</strong></summary>
   <br />
 
-  The product is the Manifest V3 extension under `extension/`. The `server/` directory is only the Node test, lint, and asset-generation harness; it is not part of the delivery path.
+  المنتج هو إضافة Manifest V3 الموجودة داخل `extension/`. أما مجلد `server/` فهو بيئة Node للاختبارات والفحص وإنشاء الأصول فقط، وليس جزءًا من مسار إرسال الكتب.
 
-  - [Architecture](docs/architecture.md)
-  - [Design decisions](docs/DECISIONS.md)
-  - [Send to Kindle mechanism](docs/03-official-s2k-mechanism.md)
-  - [Changelog](CHANGELOG.md)
+  - [البنية](docs/architecture.md)
+  - [قرارات التصميم](docs/DECISIONS.md)
+  - [آلية Send to Kindle](docs/03-official-s2k-mechanism.md)
+  - [سجل التغييرات](CHANGELOG.md)
 </details>
 
-## Compatibility
+## التوافق
 
-Chrome, Brave, Edge, Arc, and other Chromium browsers that support Manifest V3.
+Chrome وBrave وEdge وArc وغيرها من متصفحات Chromium التي تدعم Manifest V3.
 
-## License
+## الرخصة
 
-[MIT](LICENSE). Third-party components retain their own licenses, including Mozilla Readability, JSZip, Amiri, and the credited icon assets.
+[MIT](LICENSE). تحتفظ المكوّنات الخارجية برخصها، ومنها Mozilla Readability وJSZip وخط أميري وأصول الأيقونات المنسوبة إلى أصحابها.
+
+</div>
