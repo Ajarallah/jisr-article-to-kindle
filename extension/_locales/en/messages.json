@@ -6,5 +6,8 @@
   "extDesc": {
     "message": "Jisr: turn any article or file (md/docx) into a clean Kindle book, with proper Arabic and optional translation.",
     "description": "Extension description shown in the store."
+  },
+  "cmdOpen": {
+    "message": "Open Jisr on the current page"
   }
 }
