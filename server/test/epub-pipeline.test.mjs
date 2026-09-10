@@ -274,3 +274,44 @@ test("LTR article -> no RTL markers", async () => {
   assert.doesNotMatch(opf, /page-progression-direction="rtl"/);
   assert.match(opf, /<dc:language>en<\/dc:language>/);
 });
+
+// --- direction resolution ------------------------------------------------
+
+test("resolveDir prefers an explicit dir, then the language tag, then the text", async () => {
+  const { resolveDir } = await import("../../extension/src/epub.js");
+  assert.equal(resolveDir({ dir: "rtl" }), "rtl");
+  assert.equal(resolveDir({ dir: "ltr", lang: "ar" }), "ltr", "an explicit dir wins over the tag");
+  assert.equal(resolveDir({ lang: "ar-SA" }), "rtl", "region subtags still resolve");
+  assert.equal(resolveDir({ lang: "he" }), "rtl");
+  assert.equal(resolveDir({ lang: "en" }), "ltr");
+  // nothing declared: read the text
+  assert.equal(resolveDir({ content: "<p>هذه فقرة عربية كاملة بلا أي وسم لغة.</p>" }), "rtl");
+  assert.equal(resolveDir({ content: "<p>A plain English paragraph.</p>" }), "ltr");
+  assert.equal(resolveDir({}), "ltr");
+  assert.equal(resolveDir(null), "ltr");
+  // markup must not be counted as content
+  assert.equal(resolveDir({ content: '<div class="article-body"><p>عربي</p></div>' }), "rtl");
+});
+
+test("an Arabic article with no dir still builds a right-to-left book", async () => {
+  const { buildEpub } = await import("../../extension/src/epub.js");
+  const blob = await buildEpub(
+    { title: "عنوان", lang: "ar", content: "<p>نصّ عربي.</p>" },
+    { includeCover: false, bookFont: "native" }
+  );
+  const zip = await JSZip.loadAsync(Buffer.from(await blob.arrayBuffer()));
+  const opf = await zip.file("OEBPS/content.opf").async("string");
+  assert.match(opf, /page-progression-direction="rtl"/);
+  const chapter = await zip.file("OEBPS/text/chapter.xhtml").async("string");
+  assert.match(chapter, /<body dir="rtl"/);
+});
+
+test("a mixed reading list takes the majority direction, not the first article's", async () => {
+  const { buildBook } = await import("../../extension/src/epub.js");
+  const arabic = (n) => ({ title: "مقال " + n, lang: "ar", dir: "rtl", content: "<p>نصّ.</p>" });
+  const english = { title: "An English piece", lang: "en", dir: "ltr", content: "<p>Text.</p>" };
+  const blob = await buildBook([english, arabic(1), arabic(2), arabic(3)], "قائمتي", { includeCover: false });
+  const zip = await JSZip.loadAsync(Buffer.from(await blob.arrayBuffer()));
+  const opf = await zip.file("OEBPS/content.opf").async("string");
+  assert.match(opf, /page-progression-direction="rtl"/, "three Arabic articles outvote one English one");
+});
