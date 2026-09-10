@@ -28,9 +28,22 @@ let settings = null;
 // Shared waiting state — a real tab, so no "keep this open" warning is needed.
 const progress = createProgress({ mountAfter: els.actions, actions: els.actions, warn: false });
 
-function setStatus(kind, html) {
+/*
+ * Status text is usually an error message, and an error message can carry bytes
+ * straight from a remote reply (deliver.js puts the server's response in it).
+ * Rendering that as HTML would let a hostile or compromised endpoint paint its
+ * own markup — a fake sign-in prompt, a link somewhere else — inside a page that
+ * holds the extension's own privileges. Status is text; the few statuses that
+ * genuinely need markup pass nodes instead.
+ */
+function setStatus(kind, text) {
   els.status.className = "status " + kind;
-  els.status.innerHTML = html;
+  els.status.textContent = text;
+  els.status.classList.remove("hidden");
+}
+function setStatusNodes(kind, ...nodes) {
+  els.status.className = "status " + kind;
+  els.status.replaceChildren(...nodes);
   els.status.classList.remove("hidden");
 }
 
@@ -47,7 +60,9 @@ async function handleFile(file) {
     setStatus("err", "صيغة غير مدعومة. المدعوم: ملفّات md و docx.");
     return;
   }
-  setStatus("working", '<span class="spinner"></span>جارٍ قراءة الملفّ وتحويله…');
+  const spin = document.createElement("span");
+  spin.className = "spinner";
+  setStatusNodes("working", spin, document.createTextNode("جارٍ قراءة الملفّ وتحويله…"));
   try {
     article = await fileToArticle(file);
     els.articleTitle.textContent = article.title;
