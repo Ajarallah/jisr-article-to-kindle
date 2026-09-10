@@ -314,7 +314,7 @@ async function prepareArticle(embedImages) {
     art = await translateArticle(base, els.targetLang.value);
   }
   if (els.glossaryToggle && els.glossaryToggle.checked) {
-    if (!settings.translationKey) throw new Error("المسرد غير متاح: لا مفتاح ترجمة في هذه النسخة.");
+    if (!settings.translationKey) throw new Error("المسرد يحتاج مفتاح OpenRouter. أضِفه من إعدادات جسر.");
     progress.stage("جارٍ إعداد المسرد الدراسي");
     const annotated = await annotateHtml(
       art.content,

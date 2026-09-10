@@ -147,6 +147,11 @@ input:focus-visible, select:focus-visible {
 
 .field { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 13px; }
 .field:last-child { margin-bottom: 0; }
+/* An API key is ~70 characters; on the side-by-side row it would be squeezed
+   into whatever the label left over. Stack it and let it own the width. */
+.field-stacked { display: block; }
+.field-stacked > .opt { margin-bottom: 7px; }
+.field-stacked input { width: 100%; }
 .field > span, .field label > span { color: var(--muted); }
 .opt { display: inline-flex; align-items: center; gap: 9px; color: var(--muted); }
 .opt-ic { width: 16px; height: 16px; flex: none; stroke-width: 1.8; color: var(--faint); }
@@ -158,7 +163,7 @@ select {
   border-radius: 0;
   font-size: 13px;
   background-color: var(--paper-2);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='%237d7365' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='%23746b5e' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: left 12px center;
   appearance: none;
@@ -251,3 +256,8 @@ ul.history li:last-child { border-bottom: 0; }
 a.history-title:hover { color: var(--cover-press); }
 .history-meta { font-size: 0.82em; color: var(--muted); font-variant-numeric: tabular-nums; }
 .history-empty { color: var(--muted); font-size: 0.9em; }
+
+/* Whether translation can actually run — stated, not implied. */
+.state-chip { display: inline-block; padding: 3px 9px; font-size: 12px; font-weight: 700; }
+.state-chip.on { color: var(--ok); background: var(--ok-bg); }
+.state-chip.off { color: var(--danger); background: var(--danger-bg); }
