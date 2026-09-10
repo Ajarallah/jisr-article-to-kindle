@@ -40,8 +40,21 @@ body {
   padding: 0 0 16px;
   border-bottom: 1px solid var(--rule);
 }
-.cover > * { padding-inline: 16px; }
-.cover > .cover-art { padding: 0; }
+.cover > * { padding-inline: 16px; position: relative; z-index: 1; }
+/*
+ * The motif belongs BEHIND the title — popup.html says so, and .cover is already
+ * position:relative with overflow:hidden for exactly that. It was never taken
+ * out of flow, though, so it reserved a 132px band of its own above the wordmark:
+ * a fifth of the popup's height spent on paper the eye reads as empty.
+ */
+.cover > .cover-art {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  z-index: 0;
+  padding: 0;
+  pointer-events: none;
+}
 .cover-top {
   display: flex;
   align-items: center;
@@ -80,6 +93,9 @@ body {
   outline: none;
 }
 .title.skeleton { opacity: 0.7; font-weight: 400; font-size: var(--text-mark); }
+/* Nothing extracted yet: the cover keeps its shape but stops pretending it holds
+   a title. The reason lives in the status region, not in 25px display type. */
+.title.title-empty { opacity: 0.55; font-weight: 400; font-size: var(--text-mark); }
 /* Editable in place — a dotted rule instead of a box, so it still reads as a cover. */
 #articleTitle[contenteditable="true"]:hover { box-shadow: 0 1px 0 var(--rule-strong); }
 #articleTitle[contenteditable="true"]:focus { box-shadow: 0 1.5px 0 var(--cover); }
@@ -161,9 +177,11 @@ main { display: flex; flex-direction: column; }
 
 .sheet { padding: 12px 16px; border-bottom: 1px solid var(--rule); }
 .sheet-head {
-  font-size: var(--text-micro);
+  /* A section label is structure, not decoration. At 10px in --faint it measured
+     2.51:1 — below AA by a wide margin, not a hairline. */
+  font-size: var(--text-sec);
   font-weight: 700;
-  color: var(--faint);
+  color: var(--muted);
   margin-bottom: 10px;
 }
 
