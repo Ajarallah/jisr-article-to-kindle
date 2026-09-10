@@ -315,3 +315,22 @@ test("a mixed reading list takes the majority direction, not the first article's
   const opf = await zip.file("OEBPS/content.opf").async("string");
   assert.match(opf, /page-progression-direction="rtl"/, "three Arabic articles outvote one English one");
 });
+
+test("notes and the table of contents carry DPUB-ARIA roles, not just epub:type", async () => {
+  const { buildEpub } = await import("../../extension/src/epub.js");
+  const blob = await buildEpub(
+    {
+      title: "حواشٍ",
+      lang: "ar",
+      dir: "rtl",
+      content: '<p>نصّ<a href="#fn1" id="ref1">1</a></p><aside id="fn1"><p>الحاشية.</p></aside>',
+    },
+    { includeCover: false, bookFont: "native" }
+  );
+  const zip = await JSZip.loadAsync(Buffer.from(await blob.arrayBuffer()));
+  const chapter = await zip.file("OEBPS/text/chapter.xhtml").async("string");
+  assert.match(chapter, /role="doc-noteref"/, "the reference is announced as a note reference");
+  assert.match(chapter, /role="doc-footnote"/, "the note itself is announced as a footnote");
+  const nav = await zip.file("OEBPS/nav.xhtml").async("string");
+  assert.match(nav, /role="doc-toc"/);
+});

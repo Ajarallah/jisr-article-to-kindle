@@ -240,8 +240,12 @@ async function normalizeContent(htmlString, baseUrl, embedImages, imgPrefix = ""
     const looksLikeNote = /^\[?\d{1,3}\]?$/.test(label) || !!a.closest("sup");
     if (!looksLikeNote) return;
     a.setAttribute("epub:type", "noteref");
+    // epub:type is for reading systems; the DPUB-ARIA role is what assistive
+    // tech reads. EPUB 3.3 asks for both.
+    a.setAttribute("role", "doc-noteref");
     if (/^(li|p|div|aside)$/.test(target.tagName.toLowerCase())) {
       target.setAttribute("epub:type", "footnote");
+      target.setAttribute("role", "doc-footnote");
     }
   });
 
@@ -580,7 +584,7 @@ async function buildEpub(article, opts = {}) {
   )}" dir="${dirAttr}">
 <head><meta charset="utf-8"/><title>Contents</title></head>
 <body>
-  <nav epub:type="toc" id="toc">
+  <nav epub:type="toc" role="doc-toc" id="toc">
     <h1>Contents</h1>
     <ol>
       ${navItems.join("\n      ")}
@@ -803,7 +807,7 @@ async function buildBook(articles, opts = {}) {
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="${escapeXml(lang)}" dir="${bookDir}">
 <head><meta charset="utf-8"/><title>Contents</title></head>
-<body><nav epub:type="toc" id="toc"><h1>المحتويات</h1><ol>
+<body><nav epub:type="toc" role="doc-toc" id="toc"><h1>المحتويات</h1><ol>
       ${navItems}
 </ol></nav></body></html>`
   );
