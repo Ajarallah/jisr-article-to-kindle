@@ -16,3 +16,5 @@ PROGRESS.html
 SUMMARY.md
 HANDOFF.md
 plans/
+.claude/
+.code-review-graph/
