@@ -1,0 +1,24 @@
+name: Feature request
+description: Suggest something Jisr should do
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do that Jisr makes hard or impossible today?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you have in mind
+      description: Optional. A rough shape is fine.
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Does it fit Jisr's constraints?
+      description: Jisr has no server, no account, and no build step. Features that need any of those are usually out of scope.
+      options:
+        - label: This works without a Jisr-operated server
+        - label: This works without an account

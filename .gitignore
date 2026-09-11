@@ -10,3 +10,11 @@ dist/
 # git — a key pushed to a public repo is scraped within minutes and stays in the
 # history forever. Copy secrets.example.js to secrets.js and fill it in.
 extension/src/secrets.js
+
+# Internal status pages kept locally, not part of the published project.
+PROGRESS.html
+SUMMARY.md
+HANDOFF.md
+plans/
+.claude/
+.code-review-graph/

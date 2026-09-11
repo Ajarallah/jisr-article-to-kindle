@@ -87,6 +87,10 @@ function injectNoteref(node, index, term, id, num) {
   const sup = doc.createElement("sup");
   const a = doc.createElement("a");
   a.setAttribute("epub:type", "noteref");
+  // EPUB 3.3 (W3C Rec, Jan 2026) is explicit that epub:type does not reach the
+  // accessibility APIs. The DPUB-ARIA role is what a screen reader announces and
+  // navigates by, so every note carries both.
+  a.setAttribute("role", "doc-noteref");
   a.setAttribute("href", "#" + id);
   a.textContent = String(num);
   sup.appendChild(a);
@@ -123,6 +127,7 @@ export async function annotateHtml(html, cfg, opts = {}) {
 
   const section = doc.createElement("section");
   section.setAttribute("epub:type", "endnotes");
+  section.setAttribute("role", "doc-endnotes");
   const h = doc.createElement("h2");
   h.textContent = rtl ? "مسرد المصطلحات" : "Glossary";
   if (rtl) h.setAttribute("dir", "rtl");
@@ -130,6 +135,7 @@ export async function annotateHtml(html, cfg, opts = {}) {
   for (const a of asides) {
     const aside = doc.createElement("aside");
     aside.setAttribute("epub:type", "footnote");
+    aside.setAttribute("role", "doc-footnote");
     aside.setAttribute("id", a.id);
     if (rtl) aside.setAttribute("dir", "rtl");
     const label = doc.createElement("strong");

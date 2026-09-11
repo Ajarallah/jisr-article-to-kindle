@@ -124,7 +124,7 @@ Then place the key in `extension/src/secrets.js`. The file is excluded from Git.
 
 ### Use
 
-1. Open an article and click the **جسر** toolbar icon.
+1. Open an article and click the **جسر** toolbar icon, or press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd>.
 2. Review the extracted title, author, and cover.
 3. Optionally enable images, translation, bilingual mode, or the study glossary.
 4. Choose **معاينة** to inspect the book, then **إرسال إلى كندل** or **تنزيل EPUB**.
@@ -219,11 +219,15 @@ Before a public release, Jisr still needs repeated physical-Kindle checks for Ar
 - [Send to Kindle mechanism](docs/03-official-s2k-mechanism.md)
 - [Changelog](CHANGELOG.md)
 - [Privacy policy](store/PRIVACY.md)
+- [Security policy](SECURITY.md)
+- [Contributing](.github/CONTRIBUTING.md)
 - [Chrome Web Store listing](store/LISTING.md)
 
 ## Contributing and support
 
-Before opening a pull request, run `npm run lint` and `npm test` from `server/`. For bugs and feature requests, open an [issue](https://github.com/Ajarallah/jisr-article-to-kindle/issues) with the page URL, reproduction steps, and browser version. Never attach API keys or Amazon account data.
+Read [CONTRIBUTING.md](.github/CONTRIBUTING.md) first — it covers running the extension unpacked, the two commands CI runs, and the conventions the code expects. For bugs and feature requests, open an [issue](https://github.com/Ajarallah/jisr-article-to-kindle/issues) with the page URL, reproduction steps, and browser version. Never attach API keys or Amazon account data.
+
+For anything security-related, use private vulnerability reporting rather than an issue — scope and known limits are in [SECURITY.md](SECURITY.md).
 
 ## License and credits
 

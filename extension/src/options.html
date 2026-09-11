@@ -33,7 +33,7 @@
       <details class="fallback" style="margin-top:14px">
         <summary>إعداد متقدّم: نطاق أمازون</summary>
         <p class="hint">غيّره فقط إذا كان حساب كندلك على نطاق آخر (الافتراضي مناسب لأغلب الحسابات).</p>
-        <input id="amazonDomain" type="url" dir="ltr" placeholder="https://www.amazon.com" />
+        <input id="amazonDomain" type="url" dir="ltr" aria-label="نطاق أمازون" placeholder="https://www.amazon.com" />
         <div class="actions" style="margin-top:10px">
           <button id="detectDomainBtn" class="btn ghost" type="button">اكتشف نطاقي تلقائيًّا</button>
         </div>
@@ -42,10 +42,21 @@
 
     <section class="panel">
       <h2>الترجمة (اختيارية)</h2>
-      <p class="hint">
-        الترجمة بالذكاء الاصطناعي <strong>مدمجة وجاهزة</strong>، بلا حاجة لأيّ مفتاح.
+      <p class="hint"><span id="translateState" class="state-chip"></span></p>
+      <p class="hint" id="translateHint">
         النموذج <code>gpt-5.6-luna</code>، والنصّ يذهب من متصفّحك إلى OpenRouter
         مباشرةً ولا يمرّ بأيّ خادم لنا.
+      </p>
+      <label class="field field-stacked">
+        <span class="opt"><svg class="opt-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 9.5a4.5 4.5 0 1 0-4.2 4.5L9 15.5H7v2H5v2H3v-2.6l6.3-6.3"/><circle cx="16.5" cy="7.5" r="1"/></svg>مفتاح OpenRouter</span>
+        <input id="translationKey" type="password" dir="ltr" spellcheck="false" autocomplete="off"
+               aria-label="مفتاح OpenRouter" placeholder="sk-or-v1-…" />
+      </label>
+      <p class="hint">
+        يُحفظ المفتاح في هذا المتصفّح وحده (<code>storage.local</code>) ولا يُزامَن مع
+        حسابك ولا يصل إلينا. احصل على مفتاح من
+        <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">openrouter.ai/keys</a>.
+        اترك الحقل فارغًا لتعطيل الترجمة والمسرد.
       </p>
       <label class="switch-row">
         <span class="switch-label"><svg class="opt-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5 H12"/><path d="M8 3 V5"/><path d="M6 5 C6 9 8.5 12 12 13"/><path d="M10.5 8.5 C8.5 11 6 12.5 4 13"/><path d="M13 20 L17 10 L21 20"/><path d="M14.3 17 H19.7"/></svg>تفعيل «الترجمة قبل الإرسال» افتراضيًا</span>
