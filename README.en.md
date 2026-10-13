@@ -210,7 +210,7 @@ The code under `extension/` requires no bundler or development server. Load that
 | Direct delivery | Verified against Amazon's Send to Kindle flow |
 | Chrome Web Store | Not published yet; manual installation only |
 
-Before a public release, Jisr still needs repeated physical-Kindle checks for Arabic shaping, bilingual layout, popup footnotes, images, and device-specific covers. Any bundled translation credential must also move behind a publisher-controlled proxy. Amazon's delivery endpoints are private and undocumented, so EPUB download will remain a permanent fallback.
+Before a public release, Jisr still needs repeated physical-Kindle checks for Arabic shaping, bilingual layout, popup footnotes, images, and device-specific covers. The translation key is never committed (`extension/src/secrets.js` is git-ignored), and the store build will ship without one: either the user enters their own key in settings, or requests go through a publisher-controlled proxy. Amazon's delivery endpoints are private and undocumented, so EPUB download will remain a permanent fallback.
 
 ## Documentation
 
