@@ -1,0 +1,54 @@
+name: Bug report
+description: Something in Jisr does not work
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For anything security-related, use private vulnerability reporting instead — see SECURITY.md.
+        Please do not paste API keys, Amazon cookies, or private article text.
+  - type: input
+    id: page
+    attributes:
+      label: Page
+      description: The article URL, or the file type if this was a Markdown/Word conversion.
+      placeholder: https://example.com/article
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what you got instead.
+    validations:
+      required: true
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Where it went wrong
+      options:
+        - Reading the page (nothing extracted, wrong content)
+        - Building the book (cover, table of contents, Arabic, layout)
+        - Translation or the glossary
+        - Delivery to Kindle
+        - On the Kindle itself (rendering, fonts, direction)
+        - Somewhere else
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version
+      placeholder: Chrome 141 / Brave 1.8x / Edge 141
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Kindle model
+      description: Only if the problem shows up on the device.
+      placeholder: Paperwhite 12th gen
+  - type: textarea
+    id: console
+    attributes:
+      label: Console output
+      description: Right-click the popup → Inspect → Console. Paste anything red.
+      render: text

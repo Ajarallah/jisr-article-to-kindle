@@ -23,7 +23,11 @@
   --paper: #f3eee3;
   --paper-2: #fdfaf4;
   --ink: #191713;
-  --muted: #7d7365;
+  /* Measured against both grounds: at #7d7365 secondary text landed at 4.47:1 on
+     --paper-2 and 4.02:1 on --paper, i.e. under WCAG AA either way. Seven percent
+     darker clears 4.5:1 on the darker of the two and is indistinguishable side
+     by side — the warm grey is unchanged, it just carries. */
+  --muted: #746b5e;
   --faint: #a1968a;
   --rule: #ddd4c2;
   --rule-strong: #c8bda6;
@@ -31,7 +35,12 @@
   /* the cover ink */
   --cover: #cb3f28;
   --cover-press: #b13520;
-  --cover-text: #f7f2e7;
+  /* On the vermilion ground #f7f2e7 measured 4.39:1 — fine for the 25px cover
+     title, short for the 12px lede and the 16px wordmark, neither of which is
+     large enough for the 3:1 allowance. Lifted until both clear 4.5:1; still
+     off-white, still warm. The EPUB's own cover ink lives in covers.js and is
+     deliberately not driven from here. */
+  --cover-text: #fdfbf5;
   --cover-rule: rgba(247, 242, 231, 0.5);
   --cover-soft: #f6e2dc;
 

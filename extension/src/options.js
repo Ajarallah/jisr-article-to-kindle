@@ -7,6 +7,8 @@ const els = {
   amazonDomain: document.getElementById("amazonDomain"),
   translateByDefault: document.getElementById("translateByDefault"),
   defaultTargetLang: document.getElementById("defaultTargetLang"),
+  translationKey: document.getElementById("translationKey"),
+  translateState: document.getElementById("translateState"),
   embedImages: document.getElementById("embedImages"),
   kindleDevice: document.getElementById("kindleDevice"),
   bookFont: document.getElementById("bookFont"),
@@ -60,6 +62,20 @@ function setStatus(kind, text) {
   els.status.classList.remove("hidden");
 }
 
+/*
+ * Say plainly whether translation can run right now. The page used to assert it
+ * was "built in, no key needed", which held only for a build carrying a key in
+ * src/secrets.js — on a fresh clone translation and the glossary were simply
+ * unreachable, and the README told people to enter a key in a field that did
+ * not exist.
+ */
+function markTranslationReady(ready) {
+  els.translateState.className = "state-chip " + (ready ? "on" : "off");
+  els.translateState.textContent = ready
+    ? "الترجمة والمسرد جاهزان."
+    : "الترجمة والمسرد معطّلان — أضِف مفتاحًا لتشغيلهما.";
+}
+
 // Built once from the shared device table (devices.js) rather than hardcoded
 // in options.html, so a device added there shows up here automatically.
 function buildDeviceOptions() {
@@ -77,6 +93,8 @@ async function load() {
   els.amazonDomain.value = s.amazonDomain || DEFAULT_SETTINGS.amazonDomain;
   els.translateByDefault.checked = !!s.translateByDefault;
   els.defaultTargetLang.value = s.defaultTargetLang || DEFAULT_SETTINGS.defaultTargetLang;
+  els.translationKey.value = s.translationKey || "";
+  markTranslationReady(!!s.translationKey);
   // Just a default preference now — the actual per-site permission is requested
   // from the popup at send time (only that article's origin, never all sites).
   els.embedImages.checked = !!s.embedImages;
@@ -101,6 +119,7 @@ async function save() {
     amazonDomain: domain,
     translateByDefault: els.translateByDefault.checked,
     defaultTargetLang: els.defaultTargetLang.value,
+    translationKey: els.translationKey.value.trim(),
     embedImages: els.embedImages.checked,
     kindleDevice: els.kindleDevice.value,
     bookFont: els.bookFont.value,
@@ -111,6 +130,7 @@ async function save() {
     includeCover: els.includeCover.checked,
     cleanArabic: els.cleanArabic.checked,
   });
+  markTranslationReady(!!els.translationKey.value.trim());
   setStatus("ok", "حُفظت الإعدادات.");
 }
 

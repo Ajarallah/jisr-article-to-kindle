@@ -6,7 +6,7 @@ The category is crowded but converges on one architecture, which leaves three ex
 
 ### Gap A — Arabic / RTL done correctly (the moat)
 
-This is the strongest opportunity and it is **verified, not assumed** (the brief demanded we check rather than presume neglect):
+This is the strongest opportunity, and it was **checked rather than assumed** — the incumbents were read, not guessed at:
 
 - **Push to Kindle actively strips `dir="rtl"`** and left it unfixed for 2+ years. ([FiveFilters forum 730](https://forum.fivefilters.org/t/add-support-for-text-direction-in-pastepad/730))
 - **Calibre reverses Arabic text** on conversion — a long-standing toolchain problem. ([MobileRead](https://www.mobileread.com/forums/showthread.php?t=252927))
@@ -79,8 +79,8 @@ Applied in `extension/src/epub.js` and validated by an automated test (`chapter 
 ## 5. Translation quality strategy
 
 - **Structure-preserving:** `server/src/translate.js` walks the DOM with cheerio, translates **only text nodes** in batches as a JSON array, and writes results back — HTML tags, links, and images are never sent to the model, so structure cannot be mangled. `<code>` / `<pre>` are skipped. Verified by test.
-- **Literary Arabic:** the system prompt demands **فصحى وسطى**, bans tashkeel (diacritics), bans the word "بل", and keeps technical terms in Latin script — matching the owner's writing conventions.
-- **Model choice via OpenRouter:** default `anthropic/claude-3.5-sonnet` (Claude leads on literary tone/register in translation benchmarks), swappable through `.env` to any OpenRouter model. This follows the owner's standing "external LLM → OpenRouter first" rule.
+- **Literary Arabic:** the system prompt demands **فصحى وسطى**, bans tashkeel (diacritics), bans the word "بل", and keeps technical terms in Latin script — the same conventions the project's own Arabic copy follows.
+- **Model choice via OpenRouter:** default `anthropic/claude-3.5-sonnet` (Claude leads on literary tone/register in translation benchmarks), swappable through `.env` to any OpenRouter model. External LLM backends go through OpenRouter by policy, so the model stays a config value.
 
 ## 6. Honest limitations (MVP)
 

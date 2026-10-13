@@ -37,10 +37,31 @@ let article = null;
 let settings = null;
 const progress = createProgress({ mountAfter: document.getElementById("actions"), actions: document.getElementById("actions") });
 
-function setStatus(kind, html) {
+/*
+ * Status text is usually an error message, and an error message can carry bytes
+ * straight from a remote reply (deliver.js puts the server's response in it).
+ * Rendering that as HTML would let a hostile or compromised endpoint paint its
+ * own markup — a fake sign-in prompt, a link somewhere else — inside a page that
+ * holds the extension's own privileges. Status is text; the few statuses that
+ * genuinely need markup pass nodes instead.
+ */
+function setStatus(kind, text) {
   els.status.className = "status " + kind;
-  els.status.innerHTML = html;
+  els.status.textContent = text;
   els.status.classList.remove("hidden");
+}
+function setStatusNodes(kind, ...nodes) {
+  els.status.className = "status " + kind;
+  els.status.replaceChildren(...nodes);
+  els.status.classList.remove("hidden");
+}
+// An in-status link that runs an action rather than navigating.
+function statusAction(text, onClick) {
+  const a = document.createElement("a");
+  a.href = "#";
+  a.textContent = text;
+  a.addEventListener("click", (ev) => { ev.preventDefault(); onClick(); });
+  return a;
 }
 function clearStatus() {
   els.status.classList.add("hidden");
@@ -194,8 +215,12 @@ async function extractCurrentArticle() {
     const results = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["src/extract.js"] });
     const result = results && results[0] && results[0].result;
     if (!result || !result.ok) {
-      els.title.textContent = "تعذر العثور على مقال قابل للقراءة في هذه الصفحة.";
+      // Typesetting the failure into the cover made the error look like the book's
+      // own title, set in 25px display type. Errors belong in the status region.
+      els.title.textContent = "لا مقال بعد";
       els.title.classList.remove("skeleton");
+      els.title.classList.add("title-empty");
+      setStatus("err", "تعذّر العثور على مقال قابل للقراءة في هذه الصفحة. جرّب «اختر منطقة» لتحديد المحتوى يدويًا.");
       return;
     }
     article = result;
@@ -289,7 +314,7 @@ async function prepareArticle(embedImages) {
     art = await translateArticle(base, els.targetLang.value);
   }
   if (els.glossaryToggle && els.glossaryToggle.checked) {
-    if (!settings.translationKey) throw new Error("المسرد غير متاح: لا مفتاح ترجمة في هذه النسخة.");
+    if (!settings.translationKey) throw new Error("المسرد يحتاج مفتاح OpenRouter. أضِفه من إعدادات جسر.");
     progress.stage("جارٍ إعداد المسرد الدراسي");
     const annotated = await annotateHtml(
       art.content,
@@ -329,23 +354,26 @@ async function onSend() {
     }
     const msg = e.message || String(e);
     if (/سجّل الدخول|مسجّل/.test(msg)) {
-      setStatus(
+      setStatusNodes(
         "err",
-        'لست مسجّلًا دخولك في أمازون. <a href="#" id="loginNow">افتح amazon.com وسجّل الدخول</a> ثم أعد المحاولة.'
+        document.createTextNode("لست مسجّلًا دخولك في أمازون. "),
+        statusAction("افتح amazon.com وسجّل الدخول", openAmazonLogin),
+        document.createTextNode(" ثم أعد المحاولة.")
       );
-      const l = document.getElementById("loginNow");
-      if (l) l.addEventListener("click", (ev) => { ev.preventDefault(); openAmazonLogin(); });
     } else {
       // Delivery rides Amazon's own session flow; if it ever fails, the file is
       // still good — offer the resilient fallback (download + official S2K).
-      setStatus(
+      setStatusNodes(
         "err",
-        `${msg}<br><a href="#" id="dlFallback">نزّل الملف</a> وأرسله عبر <a href="#" id="s2kOfficial">«Send to Kindle» الرسمي</a>.`
+        document.createTextNode(msg),
+        document.createElement("br"),
+        statusAction("نزّل الملف", onDownload),
+        document.createTextNode(" وأرسله عبر "),
+        statusAction("«Send to Kindle» الرسمي", () =>
+          chrome.tabs.create({ url: "https://www.amazon.com/sendtokindle" })
+        ),
+        document.createTextNode(".")
       );
-      const d = document.getElementById("dlFallback");
-      if (d) d.addEventListener("click", (ev) => { ev.preventDefault(); onDownload(); });
-      const o = document.getElementById("s2kOfficial");
-      if (o) o.addEventListener("click", (ev) => { ev.preventDefault(); chrome.tabs.create({ url: "https://www.amazon.com/sendtokindle" }); });
     }
   }
 }

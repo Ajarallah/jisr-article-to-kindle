@@ -126,7 +126,7 @@ cp extension/src/secrets.example.js extension/src/secrets.js
 
 ### الاستعمال
 
-1. افتح مقالًا، ثم اختر أيقونة **جسر**.
+1. افتح مقالًا، ثم اختر أيقونة **جسر** أو اضغط <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd>.
 2. راجع العنوان والمؤلف والغلاف.
 3. اختر الصور أو الترجمة أو الوضع الثنائي أو المسرد عند الحاجة.
 4. اختر **معاينة**، ثم **إرسال إلى كندل** أو **تنزيل EPUB**.
@@ -164,7 +164,7 @@ EPUB3 + غلاف + فهرس
 | `openrouter.ai` | الترجمة والمسرد عند تشغيلهما فقط |
 | صلاحية موقع اختيارية | تضمين صور المقال من ذلك الموقع عند طلب المستخدم |
 
-التفاصيل في [سياسة الخصوصية](store/PRIVACY.md).
+التفاصيل في [سياسة الخصوصية](store/PRIVACY.md)، وحدود الأمان والإبلاغ عن الثغرات في [SECURITY.md](SECURITY.md).
 
 <a id="repository-guide"></a>
 
@@ -221,11 +221,15 @@ npm test
 - [آلية Send to Kindle](docs/03-official-s2k-mechanism.md)
 - [سجل التغييرات](CHANGELOG.md)
 - [سياسة الخصوصية](store/PRIVACY.md)
+- [سياسة الأمان](SECURITY.md)
+- [دليل المساهمة](.github/CONTRIBUTING.md)
 - [نص متجر Chrome](store/LISTING.md)
 
 ## المساهمة والدعم
 
-قبل فتح طلب دمج، شغّل `npm run lint` و`npm test` من مجلد `server/`. للأخطاء والاقتراحات، افتح [Issue](https://github.com/Ajarallah/jisr-article-to-kindle/issues) وأرفق رابط الصفحة وخطوات تكرار المشكلة وإصدار المتصفح. لا ترفق مفاتيح API أو بيانات حساب Amazon.
+اقرأ [دليل المساهمة](.github/CONTRIBUTING.md) أولًا؛ فيه طريقة تشغيل الإضافة غير محزّمة، والأمران اللذان يشغّلهما CI، والأعراف التي يتوقّعها الكود. للأخطاء والاقتراحات، افتح [Issue](https://github.com/Ajarallah/jisr-article-to-kindle/issues) وأرفق رابط الصفحة وخطوات تكرار المشكلة وإصدار المتصفح. لا ترفق مفاتيح API أو بيانات حساب Amazon.
+
+وللثغرات الأمنية استخدم الإبلاغ الخاص في GitHub بدل فتح Issue — النطاق والحدود المعروفة في [SECURITY.md](SECURITY.md).
 
 ## الرخصة والاعتمادات
 

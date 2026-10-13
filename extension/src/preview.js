@@ -26,9 +26,17 @@ function buildOpts() {
   return bookOptions(settings || {}, { embedImages: !!article.embedImages });
 }
 
-function setStatus(kind, html) {
+/*
+ * Status text is usually an error message, and an error message can carry bytes
+ * straight from a remote reply (deliver.js puts the server's response in it).
+ * Rendering that as HTML would let a hostile or compromised endpoint paint its
+ * own markup — a fake sign-in prompt, a link somewhere else — inside a page that
+ * holds the extension's own privileges. Status is text; the few statuses that
+ * genuinely need markup pass nodes instead.
+ */
+function setStatus(kind, text) {
   els.status.className = "status " + kind;
-  els.status.innerHTML = html;
+  els.status.textContent = text;
   els.status.classList.remove("hidden");
 }
 

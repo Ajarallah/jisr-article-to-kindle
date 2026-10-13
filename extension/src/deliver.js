@@ -26,8 +26,29 @@ const OFFLINE_MSG = "تعذّر الوصول إلى أمازون. تحقّق م�
 const TIMEOUT_MSG = "انتهت مهلة الاتصال بأمازون. أعد المحاولة.";
 const SIGNIN_MSG = "لست مسجّلًا دخولك في أمازون. افتح amazon.com وسجّل الدخول ثم أعد المحاولة.";
 
+/*
+ * Every call below runs with credentials:"include", and /init hands Amazon the
+ * whole EPUB. `domain` arrives from chrome.storage.sync — it roams between
+ * profiles and the options page accepts free text — so it is not trusted input.
+ * A domain outside the marketplaces we hold host permission for would send the
+ * user's session probe, and then their document, to a stranger. Pin it.
+ */
 function base(domain) {
-  return (domain || DEFAULT_DOMAIN).replace(/\/$/, "") + "/sendtokindle";
+  const clean = (domain || DEFAULT_DOMAIN).replace(/\/$/, "");
+  return (AMAZON_DOMAINS.includes(clean) ? clean : DEFAULT_DOMAIN) + "/sendtokindle";
+}
+
+// The S3 upload URL is Amazon's to choose, but it decides where the article
+// goes. Pin it to Amazon's own hosts so a tampered /init reply cannot redirect
+// the document to a third party.
+export function isAmazonUploadUrl(url) {
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "https:") return false;
+    return /(^|\.)amazonaws\.com$/i.test(u.hostname) || /(^|\.)amazon\.[a-z.]+$/i.test(u.hostname);
+  } catch {
+    return false;
+  }
 }
 
 function uniqId() {
@@ -200,6 +221,7 @@ export async function sendEpubToKindle({ blob, title, author, domain, archive = 
     fileExtension: "epub",
   }, signal);
   if (!init.uploadUrl || !init.stkToken) throw new Error("تعذّرت تهيئة الرفع من أمازون.");
+  if (!isAmazonUploadUrl(init.uploadUrl)) throw new Error("رابط الرفع الذي أعادته أمازون غير معروف؛ أُلغي الإرسال.");
 
   // 2) PUT the EPUB bytes to S3 (empty Content-Type, no CSRF — matches official)
   let put;

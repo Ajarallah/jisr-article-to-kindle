@@ -39,6 +39,29 @@ function canUseCanvas() {
   return typeof OffscreenCanvas !== "undefined" && typeof createImageBitmap !== "undefined";
 }
 
+/*
+ * Which way the book reads.
+ *
+ * Every producer in the extension sets article.dir — extract.js, dropconvert.js,
+ * the region picker, translate.js, the reading list. But direction is the one
+ * field this product cannot afford to get wrong: without it the spine loses
+ * page-progression-direction, the Arabic font is never embedded, and the reader
+ * gets an Arabic book that opens from the wrong end and renders as empty boxes.
+ * A missing dir silently meant "ltr", so one new caller forgetting it would ship
+ * that book. Fall back to the language tag, then to the text itself.
+ */
+const RTL_LANGS = ["ar", "he", "fa", "ur", "ps", "sd", "ku", "yi", "dv"];
+export function resolveDir(article) {
+  if (article && (article.dir === "rtl" || article.dir === "ltr")) return article.dir;
+  const lang = String((article && article.lang) || "").toLowerCase().split(/[-_]/)[0];
+  if (RTL_LANGS.includes(lang)) return "rtl";
+  if (lang) return "ltr";
+  const text = String((article && article.content) || "").replace(/<[^>]*>/g, " ");
+  const rtl = (text.match(/[\u0590-\u05ff\u0600-\u06ff\u0700-\u077f\u08a0-\u08ff\ufb1d-\ufdff\ufe70-\ufeff]/g) || []).length;
+  const ltr = (text.match(/[A-Za-z]/g) || []).length;
+  return rtl > ltr ? "rtl" : "ltr";
+}
+
 function uuidv4() {
   // Not cryptographically important — just a stable book id.
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
@@ -217,8 +240,12 @@ async function normalizeContent(htmlString, baseUrl, embedImages, imgPrefix = ""
     const looksLikeNote = /^\[?\d{1,3}\]?$/.test(label) || !!a.closest("sup");
     if (!looksLikeNote) return;
     a.setAttribute("epub:type", "noteref");
+    // epub:type is for reading systems; the DPUB-ARIA role is what assistive
+    // tech reads. EPUB 3.3 asks for both.
+    a.setAttribute("role", "doc-noteref");
     if (/^(li|p|div|aside)$/.test(target.tagName.toLowerCase())) {
       target.setAttribute("epub:type", "footnote");
+      target.setAttribute("role", "doc-footnote");
     }
   });
 
@@ -448,7 +475,7 @@ async function buildEpub(article, opts = {}) {
   const embedImages = !!opts.embedImages;
   const zip = new JSZip();
   const bookId = uuidv4();
-  const isRtl = article.dir === "rtl";
+  const isRtl = resolveDir(article) === "rtl";
   // Normalize the language tag (lowercase + drop region subtag): Amazon rejects
   // case-mismatched or region-tagged BCP-47, which silently fails the send.
   const lang = simplifyLang(article.lang) || (isRtl ? "ar" : "en");
@@ -557,7 +584,7 @@ async function buildEpub(article, opts = {}) {
   )}" dir="${dirAttr}">
 <head><meta charset="utf-8"/><title>Contents</title></head>
 <body>
-  <nav epub:type="toc" id="toc">
+  <nav epub:type="toc" role="doc-toc" id="toc">
     <h1>Contents</h1>
     <ol>
       ${navItems.join("\n      ")}
@@ -683,7 +710,11 @@ async function buildBook(articles, opts = {}) {
   if (!articles || !articles.length) throw new Error("no articles");
   const embedImages = !!opts.embedImages;
   const anyRtl = articles.some((a) => a.dir === "rtl");
-  const bookDir = articles[0].dir === "rtl" ? "rtl" : "ltr";
+  // A reading list is a mixed bag by nature. Taking the direction from whichever
+  // article was added first turned four Arabic pieces into an LTR book because
+  // one English one led. Let the majority decide.
+  const bookDir =
+    articles.filter((a) => resolveDir(a) === "rtl").length * 2 >= articles.length ? "rtl" : "ltr";
   const lang = simplifyLang(articles[0].lang) || (bookDir === "rtl" ? "ar" : "en");
   const bookTitle =
     opts.title ||
@@ -776,7 +807,7 @@ async function buildBook(articles, opts = {}) {
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="${escapeXml(lang)}" dir="${bookDir}">
 <head><meta charset="utf-8"/><title>Contents</title></head>
-<body><nav epub:type="toc" id="toc"><h1>المحتويات</h1><ol>
+<body><nav epub:type="toc" role="doc-toc" id="toc"><h1>المحتويات</h1><ol>
       ${navItems}
 </ol></nav></body></html>`
   );

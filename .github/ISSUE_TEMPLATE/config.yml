@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/Ajarallah/jisr-article-to-kindle/security/advisories/new
+    about: Report privately instead of opening an issue.
+  - name: Delivery to Kindle stopped working
+    url: https://github.com/Ajarallah/jisr-article-to-kindle/blob/main/docs/03-official-s2k-mechanism.md
+    about: Amazon's endpoints are undocumented and change. Read this first, then open a bug if it still looks wrong.
